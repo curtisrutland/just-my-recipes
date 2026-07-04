@@ -6,11 +6,14 @@ import { clerkMiddleware } from "@clerk/nextjs/server";
 // itself via `withMcpAuth`, and the /.well-known/* metadata routes stay public.
 export default clerkMiddleware();
 
+// Scope Clerk to ONLY the MCP surface. The public recipe site and the existing
+// static-key API (/api/recipes) never touch Clerk, so a Clerk misconfig or
+// outage can break the connector but never the site itself.
 export const config = {
   matcher: [
-    // Skip Next internals and static assets; run on everything else...
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // ...and always run on API routes (the MCP transport lives under /api).
-    "/(api|trpc)(.*)",
+    "/api/mcp",
+    "/api/sse",
+    "/.well-known/oauth-protected-resource",
+    "/.well-known/oauth-authorization-server",
   ],
 };
