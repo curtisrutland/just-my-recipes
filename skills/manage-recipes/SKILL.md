@@ -26,7 +26,7 @@ Run `python recipes.py <command>`:
 | `update <slug> <patch.json>` | **Merge** the patch into an existing recipe. |
 | `set-visibility <slug> <public\|draft>` | Publish or unpublish. |
 | `search <text> [--tag T] [--limit N] [--offset N] [--public-only]` | Free-text search over name, description, ingredients, notes. |
-| `validate <recipe.json>` | **Offline** schema check of a recipe/patch — no network. |
+| `validate [--patch] <recipe.json>` | **Offline** schema check — no network. Add `--patch` to check an `update` patch (`name`/`recipeIngredient` not required). |
 
 For `create`, `update`, and `validate`, write the JSON to a file first, then pass its path.
 
@@ -59,6 +59,9 @@ For `create`, `update`, and `validate`, write the JSON to a file first, then pas
   field-path → message map (plus warnings for likely typos). Fix errors before writing.
   It's advisory — the server still validates — but it catches mistakes cheaply. A common
   one it flags hard: nutrition values written as `"22 g"` strings instead of numbers.
+  **Validating an `update` patch? Pass `--patch`** — a patch sends only the fields you're
+  changing, so without it `validate` falsely fails on missing `name`/`recipeIngredient`.
+  `--patch` drops just those two required checks; every present field is still type-checked.
 - **On success, report what the command prints:** `create` and `set-visibility
   public` print the recipe's public URL; `list`, `get`, and `tags` print data to
   relay to the user; `set-visibility draft` confirms it's now hidden; `update`

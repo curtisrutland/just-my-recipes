@@ -244,8 +244,14 @@ def _is_number(v):
 
 
 def cmd_validate(args):
+    # --patch: validate an `update` merge patch, where name/recipeIngredient are
+    # NOT required (you send only the fields you're changing). Every other check
+    # is already presence-gated, so patch mode only relaxes the two required
+    # fields; anything present is still fully type/format-checked.
+    patch_mode = "--patch" in args
+    args = [a for a in args if a != "--patch"]
     if not args:
-        _die("usage: validate <recipe.json>")
+        _die("usage: validate [--patch] <recipe.json>")
     try:
         with open(args[0]) as f:
             doc = json.load(f)
@@ -260,22 +266,25 @@ def cmd_validate(args):
     def err(path, msg):
         errors.setdefault(path, []).append(msg)
 
-    # name — required
-    if "name" not in doc:
+    # name — required for create; optional under --patch. Present values are
+    # always type-checked; "required" fires only when absent and not patching.
+    if "name" in doc:
+        if not _nonempty_str(doc["name"]):
+            err("name", "must be a non-empty string")
+    elif not patch_mode:
         err("name", "required")
-    elif not _nonempty_str(doc["name"]):
-        err("name", "must be a non-empty string")
 
-    # recipeIngredient — required, >=1 non-empty strings
+    # recipeIngredient — required for create; optional under --patch. Same rule.
     ri = doc.get("recipeIngredient")
-    if ri is None:
+    if ri is not None:
+        if not isinstance(ri, list) or len(ri) < 1:
+            err("recipeIngredient", "must be a non-empty array of strings")
+        else:
+            for i, el in enumerate(ri):
+                if not _nonempty_str(el):
+                    err(f"recipeIngredient.{i}", "must be a non-empty string")
+    elif not patch_mode:
         err("recipeIngredient", "required")
-    elif not isinstance(ri, list) or len(ri) < 1:
-        err("recipeIngredient", "must be a non-empty array of strings")
-    else:
-        for i, el in enumerate(ri):
-            if not _nonempty_str(el):
-                err(f"recipeIngredient.{i}", "must be a non-empty string")
 
     # recipeInstructions — optional; string or HowToStep
     ins = doc.get("recipeInstructions")
