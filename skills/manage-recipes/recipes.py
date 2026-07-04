@@ -2,7 +2,9 @@
 """Manage recipes on {{API_BASE}} — the full CRUD suite (mirrors the MCP tools).
 
 Subcommands:
-  list [--tag T] [--limit N] [--offset N]   list recipes, incl. drafts
+  list [--public-only] [--tag T] [--limit N] [--offset N]
+                                             list recipes (drafts included by
+                                             default; --public-only = public view)
   get <slug>                                 full recipe by slug (incl. drafts)
   tags                                       all tags currently in use
   create <recipe.json>                       create (draft unless visibility=public)
@@ -57,16 +59,24 @@ def _doc(serialized):
 
 
 def cmd_list(args):
-    params = ["include=drafts"]
+    # Owner-facing default: show everything, drafts included (you have write access).
+    # `--public-only` omits include=drafts to preview exactly what the public sees.
+    params = []
+    public_only = False
     it = iter(args)
     for a in it:
-        if a == "--tag":
+        if a == "--public-only":
+            public_only = True
+        elif a == "--tag":
             params.append(f"tag={next(it)}")
         elif a == "--limit":
             params.append(f"limit={next(it)}")
         elif a == "--offset":
             params.append(f"offset={next(it)}")
-    status, body = _req("GET", f"/api/recipes?{'&'.join(params)}", auth=True)
+    if not public_only:
+        params.append("include=drafts")
+    query = f"?{'&'.join(params)}" if params else ""
+    status, body = _req("GET", f"/api/recipes{query}", auth=True)
     if status != 200:
         _die(f"list failed ({status}): {body}")
     for r in body["recipes"]:

@@ -19,7 +19,7 @@ Run `python recipes.py <command>`:
 
 | Command | What it does |
 |---|---|
-| `list [--tag T] [--limit N] [--offset N]` | List recipes (includes drafts). |
+| `list [--public-only] [--tag T] [--limit N] [--offset N]` | List recipes. **Drafts are included by default** (you have write access); add `--public-only` to preview just what the public sees. |
 | `get <slug>` | Full recipe JSON by slug. |
 | `tags` | All tags currently in use. |
 | `create <recipe.json>` | Create a recipe. |
