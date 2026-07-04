@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Zilla_Slab } from "next/font/google";
 import "./globals.css";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 
 const zilla = Zilla_Slab({
   weight: ["500", "600", "700"],
@@ -40,6 +42,8 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-paper font-sans text-ink">
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <SpeedInsights />
+        <Analytics />
         {children}
       </body>
     </html>
