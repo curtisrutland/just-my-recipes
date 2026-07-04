@@ -1,5 +1,5 @@
 // Build claude.ai Skills from the templates in `skills/`, injecting secrets from
-// .env.local, and emit ready-to-upload copies into the gitignored `.skills-dist/`.
+// .env.local, and emit ready-to-upload copies into the gitignored `skills-dist/`.
 //
 //   npm run skills:build
 //
@@ -12,7 +12,7 @@
 //                                and must reach production.
 //
 // The emitted folder contains your live token, so it is gitignored. Never commit
-// .skills-dist/. Edit the templates in skills/ (which carry placeholders only).
+// skills-dist/. Edit the templates in skills/ (which carry placeholders only).
 import { config } from "dotenv";
 import { execFileSync } from "node:child_process";
 import {
@@ -27,7 +27,7 @@ import { join } from "node:path";
 config({ path: ".env.local" });
 
 const SRC = "skills";
-const OUT = ".skills-dist";
+const OUT = "skills-dist"; // visible (non-dot) so it shows in Finder for uploads; gitignored
 
 const vars = {
   RECIPES_PUBLISH_TOKEN: process.env.RECIPES_PUBLISH_TOKEN,
@@ -56,7 +56,7 @@ for (const skill of skills) {
     if (file === "README.md") continue; // repo doc, not part of the skill
     writeFileSync(join(outDir, file), inject(readFileSync(join(inDir, file), "utf8")));
   }
-  // Emit an uploadable zip as a sibling of the folder: .skills-dist/<skill>.zip
+  // Emit an uploadable zip as a sibling of the folder: skills-dist/<skill>.zip
   // (folder-wrapped, so it contains <skill>/SKILL.md — the layout claude.ai accepts).
   let zipped = "";
   try {

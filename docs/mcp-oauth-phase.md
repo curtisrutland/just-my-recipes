@@ -16,7 +16,7 @@ not work in claude.ai** (Anthropic-side custom-connector tool-injection bug). Th
   claude.ai's code-execution sandbox POSTs to the existing REST API. Covers
   list/get/tags/create/update(merge)/set-visibility; **hard delete is owner-only** (primary
   key). Works on web and mobile. Build: `npm run skills:build` → upload
-  `.skills-dist/<skill>.zip`. This is the delivered capability for "claude.ai edits/publishes
+  `skills-dist/<skill>.zip`. This is the delivered capability for "claude.ai edits/publishes
   recipes." Memory: [[mcp-connector]].
 
 Branch: merged to `main` (phase 2 branch `mcp-oauth` folded in). Claude plan: **Max**.

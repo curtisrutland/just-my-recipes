@@ -37,7 +37,7 @@ yarn-error.log*
 .vercel
 
 # built skills (contain the injected publish token — never commit)
-.skills-dist
+skills-dist
 
 # typescript
 *.tsbuildinfo

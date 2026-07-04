@@ -25,9 +25,9 @@ any connector. This path works on web and mobile.
 npm run skills:build        # injects RECIPES_PUBLISH_TOKEN from .env.local
 ```
 
-This emits, into the gitignored `.skills-dist/` (real token baked in), for each
+This emits, into the gitignored `skills-dist/` (real token baked in), for each
 skill both the folder and a sibling **`<skill>.zip`** ready to upload. Upload
-`.skills-dist/<skill>.zip` to **claude.ai → Settings → Capabilities / Skills**. In
+`skills-dist/<skill>.zip` to **claude.ai → Settings → Capabilities / Skills**. In
 settings, enable Code execution + network egress and add `justmy.recipes` to the
 domain allowlist.
 
@@ -48,7 +48,7 @@ files. So embedding is the only option in this context.
 **Why that's acceptable here** — the repo never carries the live token:
 - The committed template (`skills/`) contains only the `{{RECIPES_PUBLISH_TOKEN}}`
   placeholder. The real value is injected by `npm run skills:build` into the
-  **gitignored** `.skills-dist/`, and lives otherwise only in the owner's private
+  **gitignored** `skills-dist/`, and lives otherwise only in the owner's private
   claude.ai account. Nothing with the real token is ever committed or pushed.
 - The token is **full-write but not delete**, single-publisher, and **revocable**: if
   it leaks, rotate it in `.env.local` + Vercel (`vercel env rm/add`), rebuild, and
