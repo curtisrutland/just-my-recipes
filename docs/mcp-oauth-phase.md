@@ -1,6 +1,9 @@
 # Phase: MCP Server + OAuth + Editing
 
-Status: **built · verified locally (OAuth + all 7 tools green via MCP Inspector)** · Target client: **claude.ai (web + mobile)**
+Status: **SHIPPED to production · live-verified at https://justmy.recipes/api/mcp** · Target client: **claude.ai (web + mobile)**
+Deployed: merged to `main`, Vercel prod deploy `htvmfuw50` Ready. Clerk **dev** instance
+(`vital-fox-61`) reused in prod; 3 Clerk env vars set in Vercel Production. Final user step:
+register the connector in claude.ai (Settings → Connectors → Add custom connector).
 Branch: **`mcp-oauth`** (all work for this phase lives here; keep `main` clean until it ships)
 Claude plan: **Max** ✅ (custom-connector gate cleared)
 
