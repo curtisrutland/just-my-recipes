@@ -1,6 +1,6 @@
 # Phase: MCP Server + OAuth + Editing
 
-Status: **spec / decisions locked · ready to build** · Target client: **claude.ai (web + mobile)**
+Status: **built · compiles + builds green · runtime OAuth not yet verified** · Target client: **claude.ai (web + mobile)**
 Branch: **`mcp-oauth`** (all work for this phase lives here; keep `main` clean until it ships)
 Claude plan: **Max** ✅ (custom-connector gate cleared)
 
@@ -184,6 +184,46 @@ adequate. No WAF/IP allowlist needed (OAuth is the gate; drop the authless-era I
 - **D5 — Endpoint path:** ✅ default — `/[transport]` (`mcp-handler` multi-transport convention).
 
 D4/D5 taken as defaults; say so if you want them changed.
+
+## 11b. Implementation log (what was actually built)
+
+Installed: `mcp-handler@1.1.0`, `@clerk/nextjs@7.5.12`, `@clerk/mcp-tools@0.5.0`,
+`@modelcontextprotocol/sdk` pinned to a single **1.29.0** via a package.json
+`overrides` (mcp-handler pins 1.26.0, Clerk needs ^1.29.0 — override dedupes to one
+copy so the shared `AuthInfo` type doesn't split).
+
+Deviations from the original spec, all forced by **Next.js 16 Cache Components**:
+- **`export const dynamic` is banned** under cacheComponents. The `.well-known` metadata
+  routes call `await connection()` (from `next/server`) instead, to mark them runtime-dynamic.
+- **Middleware file is `src/proxy.ts`**, not `middleware.ts` (Next 16 rename). Clerk's
+  `clerkMiddleware()` works there — build output confirms `ƒ Proxy (Middleware)` is active.
+- Tools expose **flat input schemas** (plain strings/arrays) and normalize through
+  `recipeWriteSchema` server-side, rather than exposing the internal Zod unions/transforms
+  to Claude as JSON Schema.
+
+Files added:
+- `src/proxy.ts` — clerkMiddleware + matcher.
+- `src/lib/mcp/auth.ts` — `verifyToken`: verifyClerkToken + `CLERK_ALLOWED_USER_ID` allowlist.
+- `src/lib/mcp/tools.ts` — 7 tools over `queries.ts` (merge-update, soft+guarded delete).
+- `src/app/api/[transport]/route.ts` — `createMcpHandler` + `withMcpAuth`.
+- `src/app/.well-known/oauth-protected-resource/route.ts` — RFC 9728 metadata.
+- `src/app/.well-known/oauth-authorization-server/route.ts` — RFC 8414 metadata.
+- `package.json` — deps + `overrides`.
+
+**Connector URL** (register in claude.ai): `https://justmy.recipes/api/mcp`
+
+Verified: `tsc --noEmit` clean; `next build` green; all MCP/metadata routes emit as
+dynamic (`ƒ`); Clerk proxy active. **NOT yet verified:** the live OAuth flow, single-user
+allowlist rejection, and a real create/edit round-trip — these need real Clerk keys + a
+claude.ai connection (see §9 rollout).
+
+### Remaining manual steps (need real Clerk keys)
+1. Create a Clerk application; **enable Dynamic Client Registration** (OAuth Applications page).
+2. Create your own Clerk user; copy its `user_...` id.
+3. Fill `.env.local` (placeholders already added): `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`,
+   `CLERK_SECRET_KEY`, `CLERK_ALLOWED_USER_ID`. Mirror these into Vercel env.
+4. `npm run dev`, test with MCP Inspector (`npx @modelcontextprotocol/inspector`).
+5. Deploy to a Vercel preview; add `https://<preview>/api/mcp` as a claude.ai custom connector.
 
 ## 12. Risks / watch-items
 
