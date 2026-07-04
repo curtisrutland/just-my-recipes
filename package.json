@@ -7,6 +7,7 @@
     "prebuild": "node scripts/build-openapi.mjs",
     "build": "next build",
     "openapi:build": "node scripts/build-openapi.mjs",
+    "skills:build": "node scripts/build-skills.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
