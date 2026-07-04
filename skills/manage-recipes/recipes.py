@@ -110,8 +110,26 @@ def cmd_update(args):
     status, current = _req("GET", f"/api/recipes/{slug}", auth=True)
     if status != 200:
         _die(f"update: recipe '{slug}' not found ({status})")
+
+    # Guard: a plain-string instructions patch must not silently drop step headings
+    # (HowToStep.name) that already exist on the recipe. If it would, refuse and tell
+    # the caller to send full HowToStep objects.
+    if patch.get("recipeInstructions") is not None:
+        current_has_headings = any(
+            isinstance(s, dict) and s.get("name")
+            for s in (current.get("recipeInstructions") or [])
+        )
+        patch_has_strings = any(isinstance(s, str) for s in patch["recipeInstructions"])
+        if current_has_headings and patch_has_strings:
+            _die(
+                f"Refusing: '{slug}' has step headings (HowToStep.name) and this "
+                "instructions patch uses plain strings, which would drop them. Send full "
+                'HowToStep objects like [{"name": "...", "text": "..."}]; '
+                f"run 'get {slug}' to see the current steps."
+            )
+
     merged = _doc(current)
-    # Shallow-merge only supplied fields; arrays are replaced wholesale.
+    # Shallow-merge only supplied fields; arrays are replaced wholesale (see SKILL.md).
     merged.update({k: v for k, v in patch.items() if v is not None})
     status, body = _req("PUT", f"/api/recipes/{slug}", body=merged, auth=True)
     if status != 200:

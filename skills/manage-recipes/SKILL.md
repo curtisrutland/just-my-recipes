@@ -9,8 +9,9 @@ description: >-
 
 # Manage recipes on justmy.recipes
 
-Full CRUD over the user's recipe site via its REST API, using the bundled
-`recipes.py` (standard library only; the API token is already embedded).
+Read and write access (no delete) over the user's recipe site via its REST API,
+using the bundled `recipes.py` (standard library only; the API token is already
+embedded).
 
 ## Operations
 
@@ -32,13 +33,24 @@ For `create` and `update`, write the JSON to a file first, then pass its path.
 - **Default new recipes to `draft`** unless the user explicitly asks to publish
   publicly. Drafts are saved but hidden from the public site.
 - **`update` is a merge:** only the fields you put in the patch change; omitted
-  fields are preserved. Arrays (ingredients, instructions, keywords) are replaced
-  wholesale when included. The **slug never changes**, even if you change `name`.
+  fields are preserved. The **slug never changes**, even if you change `name`.
+- **Adding to an array is NOT a partial patch.** `recipeIngredient`,
+  `recipeInstructions`, and `keywords` are replaced *entirely* when included in a
+  patch. To *add* an item (e.g. "add cumin"), first `get <slug>`, append to the
+  existing array, and send the **full** array back. Never send a single new element
+  as the whole array — it deletes the rest.
+- **Editing instructions:** on read, steps come back as `HowToStep` objects
+  (`{"name"?, "text"}`). If a recipe has step headings (`name`), send instructions
+  back as full `HowToStep` objects so the headings aren't lost — a plain-string
+  instructions patch on a recipe that already has headings is refused by the tool.
 - **To take a recipe off the site, unpublish it** with `set-visibility <slug> draft`
   (reversible). This Skill cannot permanently delete recipes — that's an
   owner-only operation done directly against the API. If the user asks to delete,
   unpublish it and tell them permanent deletion is done separately.
-- On a validation error, fix the JSON and retry; report the printed URL on success.
+- **On success, report what the command prints:** `create` and `set-visibility
+  public` print the recipe's public URL; `list`, `get`, and `tags` print data to
+  relay to the user; `set-visibility draft` confirms it's now hidden; `update`
+  prints the updated URL. On a validation error, fix the JSON and retry.
 
 ## Recipe JSON schema (for create / update patches)
 
@@ -55,10 +67,11 @@ For `create` and `update`, write the JSON to a file first, then pass its path.
   "prepTime": "PT20M",                            // optional, ISO 8601 duration
   "cookTime": "PT45M",                            // optional, ISO 8601 duration
   "totalTime": "PT65M",                           // optional, ISO 8601 duration
-  "recipeInstructions": [                          // optional, array of step strings
-    "Brown the beef.",
-    "Stir in the chili paste and simmer 40 minutes."
-  ],
+  "recipeInstructions": [                          // optional; strings OR HowToStep objects
+    "Brown the beef.",                             //   a plain string, OR…
+    { "@type": "HowToStep", "name": "Simmer",      //   …an object with an optional short heading
+      "text": "Stir in the chili paste and simmer 40 minutes." }
+  ],                                               // NOTE: reads always return these as HowToStep[]
   "recipeCategory": ["dinner"],                    // optional, array of strings
   "recipeCuisine": ["tex-mex"],                    // optional, array of strings
   "keywords": ["chili", "beef"],                   // optional, array of strings
