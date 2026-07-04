@@ -1,7 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { INDEX_TAG, recipeTag } from "./cache-tags";
 import { formatDuration } from "./format";
-import { getPublicTags, getRecipeRow, listRecipeRows } from "./queries";
+import { getPublicTags, getRecipeRow, listRecipeRows, type Visibility } from "./queries";
 import type { RecipeRow } from "./db/schema";
 import type { RecipeJsonLd } from "./recipe";
 
@@ -63,13 +63,24 @@ export async function getAllTags(): Promise<string[]> {
   return getPublicTags();
 }
 
-export type RecipeDetail = { slug: string; data: RecipeJsonLd };
+export type RecipeDetail = {
+  slug: string;
+  data: RecipeJsonLd;
+  visibility: Visibility;
+};
 
-export async function getPublicRecipe(slug: string): Promise<RecipeDetail | null> {
+/**
+ * The detail-page read. Returns a recipe of EITHER visibility so a draft is
+ * viewable by direct URL (for owner preview) with a "Draft" badge + `noindex` —
+ * drafts stay out of every listing/tag view (those are public-only) but are
+ * reachable if you know the slug. `recipeTag(slug)` still busts this on any write,
+ * so a publish/edit reflects immediately. Returns null only when the slug is gone.
+ */
+export async function getViewableRecipe(slug: string): Promise<RecipeDetail | null> {
   "use cache";
   cacheTag(recipeTag(slug));
   cacheLife("max");
   const row = await getRecipeRow(slug);
-  if (!row || row.visibility !== "public") return null;
-  return { slug: row.slug, data: row.data };
+  if (!row) return null;
+  return { slug: row.slug, data: row.data, visibility: row.visibility };
 }

@@ -46,7 +46,10 @@ validation · Clerk (admin + parked MCP auth) · Vitest.
 
 - **Public reads are cached** — `src/lib/cached.ts` wraps queries in `"use cache"` +
   `cacheLife("max")` + `cacheTag`. `getIndexRecipes`/`getTagRecipes`/`getAllTags` carry
-  `INDEX_TAG`; `getPublicRecipe(slug)` carries `recipeTag(slug)` and returns `null` for non-public.
+  `INDEX_TAG`; `getViewableRecipe(slug)` carries `recipeTag(slug)`. Listings are **public-only**;
+  the detail read returns a recipe of **either** visibility, so a draft is viewable by direct URL
+  (owner preview) with a "Draft" badge + `noindex` — drafts stay out of every listing but are
+  reachable if you know the slug.
 - **Writes revalidate on demand** — every API write and admin action calls
   `revalidateForRecipe(slug)` (`src/lib/cache-tags.ts`), which busts `INDEX_TAG` (index + all tag
   pages) and `recipeTag(slug)` (that detail page).

@@ -9,7 +9,7 @@ import { SearchAffordance } from "@/components/SearchAffordance";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { WakeBarButton, WakeCard, WakeLockProvider } from "@/components/WakeLock";
-import { getPublicRecipe } from "@/lib/cached";
+import { getViewableRecipe } from "@/lib/cached";
 import { formatDuration } from "@/lib/format";
 import { getPublicSlugs } from "@/lib/queries";
 import { nutritionDisplay, toJsonLd } from "@/lib/recipe";
@@ -25,13 +25,18 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
-  const recipe = await getPublicRecipe(slug);
+  const recipe = await getViewableRecipe(slug);
   if (!recipe) return {};
   const { data } = recipe;
   return {
     title: data.name,
     description: data.description,
     alternates: { canonical: `/recipes/${slug}` },
+    // A draft is viewable by URL but must never be indexed or followed.
+    robots:
+      recipe.visibility === "draft"
+        ? { index: false, follow: false }
+        : undefined,
     openGraph: {
       title: data.name,
       description: data.description,
@@ -44,9 +49,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function RecipePage({ params }: Params) {
   const { slug } = await params;
-  const recipe = await getPublicRecipe(slug);
+  const recipe = await getViewableRecipe(slug);
   if (!recipe) notFound();
   const { data } = recipe;
+  const isDraft = recipe.visibility === "draft";
 
   const meta = [
     data.recipeYield && { label: "Yield", value: data.recipeYield },
@@ -76,6 +82,17 @@ export default async function RecipePage({ params }: Params) {
         </SiteHeader>
 
         <article className="flex-1 px-5 pb-10 pt-5 md:px-14 md:pt-[34px]">
+          {isDraft && (
+            <div className="mb-3.5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-accent-line bg-accent-soft px-3.5 py-2 text-caption text-accent print:hidden">
+              <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                Draft
+              </span>
+              <span>
+                Not published — visible only to people with this link. Publish it
+                from the admin dashboard.
+              </span>
+            </div>
+          )}
           <Link
             href="/"
             className="mb-3.5 inline-block text-caption tracking-[0.01em] text-muted no-underline print:hidden"
