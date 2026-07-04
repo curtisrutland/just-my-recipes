@@ -1,11 +1,29 @@
 # Phase: MCP Server + OAuth + Editing
 
-Status: **SHIPPED to production · live-verified at https://justmy.recipes/api/mcp** · Target client: **claude.ai (web + mobile)**
-Deployed: merged to `main`, Vercel prod deploy `htvmfuw50` Ready. Clerk **dev** instance
-(`vital-fox-61`) reused in prod; 3 Clerk env vars set in Vercel Production. Final user step:
-register the connector in claude.ai (Settings → Connectors → Add custom connector).
-Branch: **`mcp-oauth`** (all work for this phase lives here; keep `main` clean until it ships)
-Claude plan: **Max** ✅ (custom-connector gate cleared)
+Status: **PHASE 2 WRAPPED.** MCP connector built, deployed, and correct — but **does
+not work in claude.ai** (Anthropic-side custom-connector tool-injection bug). The
+**Skills path shipped instead and works** (web + mobile). Target: **claude.ai (web + mobile)**.
+
+## Outcome (what actually happened)
+
+- **MCP connector:** fully built, OAuth via Clerk, deployed to prod at
+  `https://justmy.recipes/api/mcp`, RFC-9728-correct, verified callable via MCP Inspector
+  AND Claude Code. But claude.ai **custom** connectors hit an Anthropic-side injection bug:
+  tools enumerate in settings yet never inject into the model session (directory connectors
+  like Spotify work; custom ones don't; zero chat-time requests ever reach the server). Not
+  fixable from our side. Left **deployed and parked** — should light up if Anthropic fixes it.
+- **Working solution → the `manage-recipes` Skill** (see `skills/` + `skills/README.md`).
+  claude.ai's code-execution sandbox POSTs to the existing REST API. Covers
+  list/get/tags/create/update(merge)/set-visibility; **hard delete is owner-only** (primary
+  key). Works on web and mobile. Build: `npm run skills:build` → upload
+  `.skills-dist/<skill>.zip`. This is the delivered capability for "claude.ai edits/publishes
+  recipes." Memory: [[mcp-connector]].
+
+Branch: merged to `main` (phase 2 branch `mcp-oauth` folded in). Claude plan: **Max**.
+
+---
+_Everything below is the original MCP-connector spec, retained for reference and for the
+day the Anthropic bug is fixed. It does not describe the working (Skills) solution._
 
 ## 1. Goal
 
