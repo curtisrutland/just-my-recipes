@@ -32,7 +32,7 @@
     "zod": "^4.4.3"
   },
   "overrides": {
-    "@modelcontextprotocol/sdk": "1.29.0"
+    "@modelcontextprotocol/sdk": "$@modelcontextprotocol/sdk"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
