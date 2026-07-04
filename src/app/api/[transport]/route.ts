@@ -17,7 +17,9 @@ const handler = createMcpHandler(
 // which is exactly what claude.ai's connector flow expects.
 const authHandler = withMcpAuth(handler, verifyToken, {
   required: true,
-  resourceMetadataPath: "/.well-known/oauth-protected-resource",
+  // Point the 401 challenge at the RFC 9728 path-specific metadata for /api/mcp,
+  // whose `resource` correctly reads https://<host>/api/mcp.
+  resourceMetadataPath: "/.well-known/oauth-protected-resource/api/mcp",
 });
 
 export { authHandler as GET, authHandler as POST };

@@ -14,6 +14,7 @@ export const config = {
     "/api/mcp",
     "/api/sse",
     "/.well-known/oauth-protected-resource",
+    "/.well-known/oauth-protected-resource/api/mcp",
     "/.well-known/oauth-authorization-server",
   ],
 };
