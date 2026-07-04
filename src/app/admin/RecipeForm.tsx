@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import {
   formValuesToPayload,
   NUTRITION_FIELDS,
@@ -62,7 +62,9 @@ export function RecipeForm({
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    submit(formValuesToPayload(values));
+    // useActionState's dispatch must run inside a transition, or `pending`
+    // (the "Saving…" state) won't track and React warns.
+    startTransition(() => submit(formValuesToPayload(values)));
   }
 
   return (
