@@ -1,4 +1,4 @@
-import { isAuthorized } from "@/lib/auth";
+import { isAuthorized, isPrimaryKey } from "@/lib/auth";
 import { revalidateForRecipe } from "@/lib/cache-tags";
 import { errorResponse, notFound, unauthorized, validationErrorResponse } from "@/lib/errors";
 import {
@@ -43,9 +43,10 @@ export async function PUT(request: Request, { params }: Ctx) {
   return Response.json(serializeRecipe(row));
 }
 
-// DELETE /api/recipes/{slug} — hard delete (auth). 204 on success.
+// DELETE /api/recipes/{slug} — hard delete. Requires the PRIMARY key, not the
+// Skill's publish token, so permanent deletion stays an owner-only operation.
 export async function DELETE(request: Request, { params }: Ctx) {
-  if (!isAuthorized(request)) return unauthorized();
+  if (!isPrimaryKey(request)) return unauthorized();
   const { slug } = await params;
 
   const deleted = await deleteRecipe(slug);

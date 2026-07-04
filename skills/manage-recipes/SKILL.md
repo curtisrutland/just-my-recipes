@@ -2,9 +2,9 @@
 name: manage-recipes
 description: >-
   Read and write recipes on the user's site justmy.recipes — list, view, create,
-  edit, publish/unpublish, and delete. Use whenever the user wants to see, add,
-  change, publish, hide, or remove recipes on their site. Requires code execution
-  with network egress allowed for justmy.recipes.
+  edit, and publish/unpublish. Use whenever the user wants to see, add, change,
+  publish, or hide recipes on their site. Requires code execution with network
+  egress allowed for justmy.recipes.
 ---
 
 # Manage recipes on justmy.recipes
@@ -24,7 +24,6 @@ Run `python recipes.py <command>`:
 | `create <recipe.json>` | Create a recipe. |
 | `update <slug> <patch.json>` | **Merge** the patch into an existing recipe. |
 | `set-visibility <slug> <public\|draft>` | Publish or unpublish. |
-| `delete <slug> --confirm` | Permanently delete (requires `--confirm`). |
 
 For `create` and `update`, write the JSON to a file first, then pass its path.
 
@@ -35,9 +34,10 @@ For `create` and `update`, write the JSON to a file first, then pass its path.
 - **`update` is a merge:** only the fields you put in the patch change; omitted
   fields are preserved. Arrays (ingredients, instructions, keywords) are replaced
   wholesale when included. The **slug never changes**, even if you change `name`.
-- **Prefer `set-visibility <slug> draft` over `delete`** to take something off the
-  site — it's reversible. Only use `delete` (with `--confirm`) when the user
-  clearly wants it gone permanently.
+- **To take a recipe off the site, unpublish it** with `set-visibility <slug> draft`
+  (reversible). This Skill cannot permanently delete recipes — that's an
+  owner-only operation done directly against the API. If the user asks to delete,
+  unpublish it and tell them permanent deletion is done separately.
 - On a validation error, fix the JSON and retry; report the printed URL on success.
 
 ## Recipe JSON schema (for create / update patches)

@@ -8,7 +8,9 @@ Subcommands:
   create <recipe.json>                       create (draft unless visibility=public)
   update <slug> <patch.json>                 MERGE patch into an existing recipe
   set-visibility <slug> <public|draft>       publish / unpublish
-  delete <slug> --confirm                    permanently delete (guarded)
+
+To take a recipe off the site, unpublish it (set-visibility draft). Permanent
+deletion is intentionally NOT available here — it is an owner-only operation.
 
 Recipe JSON schema is documented in SKILL.md. Standard library only.
 Values are injected at build time from .env.local (do not hand-edit).
@@ -132,19 +134,6 @@ def cmd_set_visibility(args):
     print(f"{slug} is now {vis}")
 
 
-def cmd_delete(args):
-    if not args:
-        _die("usage: delete <slug> --confirm")
-    if "--confirm" not in args[1:]:
-        _die("refusing to delete without --confirm. Prefer 'set-visibility <slug> draft' to hide instead.")
-    slug = args[0]
-    status, body = _req("DELETE", f"/api/recipes/{slug}", auth=True)
-    if status == 204:
-        print(f"Deleted {slug}")
-    else:
-        _die(f"delete failed ({status}): {body}")
-
-
 CMDS = {
     "list": cmd_list,
     "get": cmd_get,
@@ -152,7 +141,6 @@ CMDS = {
     "create": cmd_create,
     "update": cmd_update,
     "set-visibility": cmd_set_visibility,
-    "delete": cmd_delete,
 }
 
 
