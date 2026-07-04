@@ -1,7 +1,8 @@
 # Phase 4 — Admin UI (owner-only)
 
-Status: **scoped, not started.** Scope frozen except the OPEN items in §8 — surface those
-during implementation, do not silently resolve them.
+Status: **SHIPPED & deployed (2026-07-04).** As-built code lives in `src/app/admin/`,
+`src/lib/admin/`, and `src/proxy.ts`. This doc is the original spec, kept as a record; the
+§8 OPEN items are now resolved (see §8) and a few as-built refinements are noted there.
 
 An owner-only, in-browser admin surface at `/admin` for the things the public site and the
 Skill can't do comfortably from a phone: **see drafts, author and edit recipes in a form,
@@ -153,20 +154,26 @@ sub-phase or at the end, your call.
 
 ---
 
-## 8. OPEN items — surface, do not silently resolve
+## 8. OPEN items — RESOLVED (as built)
 
-1. **Duration input UX** — friendly minutes/hours numeric inputs auto-converted to ISO 8601
-   (proposed) vs. raw ISO text fields. Affects form ergonomics only.
-2. **Delete friction** — single inline confirm (proposed) vs. type-the-slug challenge on the
-   final draft delete.
-3. **Admin entry point** — RESOLVED: a plain, always-visible `Admin` link in the site footer
-   (public tree stays Clerk-free — non-owners who click it just hit sign-in). It's fine for the
-   admin surface to be publicly known to exist.
-4. **Sign-in surface** — Clerk-hosted redirect (proposed, least code) vs. an embedded
-   `<SignIn>` on an `/admin/sign-in` route.
-5. **Dashboard ordering/scale** — current `listRecipeRows` orders by `createdAt desc` with a
-   limit; with a small recipe count a single unpaginated view is fine, but confirm no pagination
-   is wanted in the admin list for now.
+1. **Duration input UX** → friendly hours/minutes numeric inputs, converted to ISO 8601
+   (`RecipeForm.tsx` `Duration`, `src/lib/duration.ts`).
+2. **Delete friction** → a two-click inline arm/confirm (4s auto-disarm) in
+   `DeleteDraftButton.tsx` — the single inline confirm, not a type-the-slug challenge.
+3. **Admin entry point** → a plain, always-visible `Admin` link in the site footer (public
+   tree stays Clerk-free — non-owners who click it just hit sign-in).
+4. **Sign-in surface** → Clerk-hosted redirect via `auth.protect()` in `proxy.ts` (least
+   code); no `/admin/sign-in` route.
+5. **Dashboard ordering/scale** → no pagination; `listRecipeRows({ limit: 500 })`, ordered
+   `createdAt desc`. Revisit if the collection grows.
+
+**As-built refinements vs. the spec above:**
+- Publish/unpublish use a dedicated column-only `setRecipeVisibility(slug, ...)` rather than
+  a full-doc `updateRecipe` — safer, can't mangle the stored document.
+- The owner gate shipped as three helpers in `src/lib/admin/auth.ts`: `getOwnerUserId`,
+  `requireOwner` (404s, for pages), and `assertOwner` (throws, for server actions).
+- Dynamic rendering: rather than `await connection()`, the layout reads Clerk's `auth()` (a
+  request API) under a `<Suspense>` boundary — that's what satisfies Cache Components here.
 
 ---
 

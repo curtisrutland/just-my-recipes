@@ -12,6 +12,9 @@ not work in claude.ai** (Anthropic-side custom-connector tool-injection bug). Th
   tools enumerate in settings yet never inject into the model session (directory connectors
   like Spotify work; custom ones don't; zero chat-time requests ever reach the server). Not
   fixable from our side. Left **deployed and parked** — should light up if Anthropic fixes it.
+  A later spike (2026-07-04) also tested the documented workaround — a static, pre-registered
+  OAuth client entered in claude.ai's **Advanced settings** (bypassing DCR) — and it ALSO
+  returned 0 tools. So both the DCR and static-client paths fail; the block is not DCR-specific.
 - **Working solution → the `manage-recipes` Skill** (see `skills/` + `skills/README.md`).
   claude.ai's code-execution sandbox POSTs to the existing REST API. Covers
   list/get/tags/create/update(merge)/set-visibility; **hard delete is owner-only** (primary
@@ -186,7 +189,11 @@ adequate. No WAF/IP allowlist needed (OAuth is the gate; drop the authless-era I
 
 ## 10. Verification checklist (definition of done)
 
-- [ ] Unauthenticated MCP request → `401` with correct `WWW-Authenticate` resource metadata.
+> Item 1 is DONE (verified via MCP Inspector + Claude Code). Items 2–7 depend on claude.ai
+> injecting the tools, which never happens (the Anthropic bug in Outcome) — they are **blocked
+> externally**, not incomplete on our side.
+
+- [x] Unauthenticated MCP request → `401` with correct `WWW-Authenticate` resource metadata.
 - [ ] claude.ai completes DCR + OAuth consent and lists all tools.
 - [ ] `create_recipe` from Claude → recipe appears on the live site (cache revalidated).
 - [ ] `update_recipe` with a *partial* payload preserves untouched fields (merge works).

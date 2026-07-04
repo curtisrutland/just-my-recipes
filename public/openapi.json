@@ -3,7 +3,7 @@
   "info": {
     "title": "Just My Recipes API",
     "version": "1.0.0",
-    "description": "Public reads, owner-only writes, for a personal recipe collection. Recipes are stored as a schema.org/Recipe subset. This spec is a first-class deliverable: a future MCP server is generated from it. Keep it in sync with the route handlers under `src/app/api`.\n"
+    "description": "Public reads, owner-only writes, for a personal recipe collection. Recipes are stored as a schema.org/Recipe subset. Keep this spec in sync with the route handlers under `src/app/api`.\n"
   },
   "servers": [
     {
@@ -28,7 +28,13 @@
           "recipes"
         ],
         "summary": "List recipes",
-        "description": "Public recipes only. With a valid key and `include=drafts`, drafts are included as well.\n",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Public recipes only. With a valid key and `include=drafts`, drafts are included as well (optional auth — the key changes results but is not required).\n",
         "parameters": [
           {
             "name": "tag",
@@ -182,7 +188,13 @@
           "recipes"
         ],
         "summary": "Get one recipe",
-        "description": "Drafts return 404 unless a valid key is provided.\n",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Drafts return 404 unless a valid key is provided (optional auth).\n",
         "responses": {
           "200": {
             "description": "The recipe.",
@@ -247,9 +259,10 @@
           "recipes"
         ],
         "summary": "Delete a recipe",
+        "description": "Hard delete. Requires the primary `RECIPES_API_KEY` — the publish token is rejected here. To take a recipe off the site without deleting, PUT it with `visibility: draft` instead.\n",
         "security": [
           {
-            "bearerAuth": []
+            "primaryKey": []
           }
         ],
         "responses": {
@@ -271,7 +284,12 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "`Authorization: Bearer <RECIPES_API_KEY>`. Required on all writes.\n"
+        "description": "`Authorization: Bearer <token>`. Accepts EITHER the primary `RECIPES_API_KEY` or the separate `RECIPES_PUBLISH_TOKEN` (the claude.ai Skill's write token). Used for create/update and for reading drafts.\n"
+      },
+      "primaryKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "`Authorization: Bearer <RECIPES_API_KEY>`. The primary key ONLY — the publish token is rejected. Required for hard delete.\n"
       }
     },
     "responses": {
@@ -296,7 +314,7 @@
         }
       },
       "ValidationError": {
-        "description": "The recipe document failed validation.",
+        "description": "A 400 error. `error.code` is `validation_error` (the document failed schema validation — `details` maps field path → messages) or `invalid_json` (the request body was not parseable JSON).\n",
         "content": {
           "application/json": {
             "schema": {
@@ -342,7 +360,9 @@
             "minLength": 1
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "description": "Trimmed; non-empty if present."
           },
           "image": {
             "type": "string",
@@ -350,8 +370,15 @@
             "description": "Single image URL."
           },
           "recipeYield": {
-            "type": "string",
-            "description": "String; numbers are coerced."
+            "description": "On write, a string or number (number is coerced to string). Always a string in responses.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
           },
           "prepTime": {
             "type": "string",
@@ -429,12 +456,12 @@
           },
           "notes": {
             "type": "string",
-            "description": "Freeform cook's notes."
+            "minLength": 1,
+            "description": "Freeform cook's notes; trimmed, non-empty if present."
           },
           "nutrition": {
             "type": "object",
-            "description": "schema.org NutritionInformation, per serving. STORED and returned in this API as plain numbers (grams for the mass macros, kcal for calories) so the data is computable. On write, values MUST be numbers — unit-strings like \"22 g\" are rejected. The public page's JSON-LD renders these as schema.org unit strings (\"31 g\", \"420 calories\"); this API body keeps numbers. Everything optional; omit the whole object if unknown.\n",
-            "additionalProperties": false,
+            "description": "schema.org NutritionInformation, per serving. STORED and returned in this API as plain numbers (grams for the mass macros, kcal for calories) so the data is computable. On write, values MUST be numbers — unit-strings like \"22 g\" are rejected. The public page's JSON-LD renders these as schema.org unit strings (\"31 g\", \"420 calories\"); this API body keeps numbers. Everything optional; omit the whole object if unknown. Unknown sub-keys are stripped on write (not rejected), like unknown top-level fields.\n",
             "properties": {
               "calories": {
                 "type": "number",
@@ -495,7 +522,8 @@
                   "public",
                   "draft"
                 ],
-                "default": "draft"
+                "default": "draft",
+                "description": "Default applies to CREATE (POST) only — omitting it there creates a draft. On PUT (replace), omitting it leaves the current visibility unchanged.\n"
               }
             }
           }
@@ -514,9 +542,17 @@
               "visibility",
               "tags",
               "createdAt",
-              "updatedAt"
+              "updatedAt",
+              "recipeInstructions"
             ],
             "properties": {
+              "recipeInstructions": {
+                "type": "array",
+                "description": "Always present (defaults to []) and always HowToStep[] in responses.",
+                "items": {
+                  "$ref": "#/components/schemas/HowToStep"
+                }
+              },
               "slug": {
                 "type": "string"
               },

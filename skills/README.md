@@ -14,9 +14,9 @@ any connector. This path works on web and mobile.
 
 ## Layout
 
-- `manage-recipes/` — full CRUD suite (`SKILL.md` + `recipes.py`). Covers the
-  same ground as the MCP tools: list, get, tags, create, update (merge),
-  set-visibility, delete.
+- `manage-recipes/` — read + write suite (`SKILL.md` + `recipes.py`). Covers the
+  same ground as the MCP tools: list, get, tags, search, create, update (merge),
+  set-visibility, validate. **No delete** — hard delete is owner-only (see below).
 - Templates use `{{VAR}}` placeholders (token, API base) — **no secrets in git**.
 
 ## Build & install

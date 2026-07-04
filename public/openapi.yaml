@@ -4,9 +4,8 @@ info:
   version: 1.0.0
   description: >
     Public reads, owner-only writes, for a personal recipe collection. Recipes
-    are stored as a schema.org/Recipe subset. This spec is a first-class
-    deliverable: a future MCP server is generated from it. Keep it in sync with
-    the route handlers under `src/app/api`.
+    are stored as a schema.org/Recipe subset. Keep this spec in sync with the
+    route handlers under `src/app/api`.
 servers:
   - url: https://justmy.recipes/api
     description: Production
@@ -23,9 +22,12 @@ paths:
     get:
       tags: [recipes]
       summary: List recipes
+      security:
+        - {}
+        - bearerAuth: []
       description: >
         Public recipes only. With a valid key and `include=drafts`, drafts are
-        included as well.
+        included as well (optional auth — the key changes results but is not required).
       parameters:
         - name: tag
           in: query
@@ -104,8 +106,11 @@ paths:
     get:
       tags: [recipes]
       summary: Get one recipe
+      security:
+        - {}
+        - bearerAuth: []
       description: >
-        Drafts return 404 unless a valid key is provided.
+        Drafts return 404 unless a valid key is provided (optional auth).
       responses:
         "200":
           description: The recipe.
@@ -137,8 +142,12 @@ paths:
     delete:
       tags: [recipes]
       summary: Delete a recipe
+      description: >
+        Hard delete. Requires the primary `RECIPES_API_KEY` — the publish token is
+        rejected here. To take a recipe off the site without deleting, PUT it with
+        `visibility: draft` instead.
       security:
-        - bearerAuth: []
+        - primaryKey: []
       responses:
         "204": { description: Deleted. }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -150,7 +159,15 @@ components:
       type: http
       scheme: bearer
       description: >
-        `Authorization: Bearer <RECIPES_API_KEY>`. Required on all writes.
+        `Authorization: Bearer <token>`. Accepts EITHER the primary
+        `RECIPES_API_KEY` or the separate `RECIPES_PUBLISH_TOKEN` (the claude.ai
+        Skill's write token). Used for create/update and for reading drafts.
+    primaryKey:
+      type: http
+      scheme: bearer
+      description: >
+        `Authorization: Bearer <RECIPES_API_KEY>`. The primary key ONLY — the
+        publish token is rejected. Required for hard delete.
 
   responses:
     Unauthorized:
@@ -164,7 +181,10 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     ValidationError:
-      description: The recipe document failed validation.
+      description: >
+        A 400 error. `error.code` is `validation_error` (the document failed schema
+        validation — `details` maps field path → messages) or `invalid_json` (the
+        request body was not parseable JSON).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -190,9 +210,13 @@ components:
       required: [name, recipeIngredient]
       properties:
         name: { type: string, minLength: 1 }
-        description: { type: string }
+        description: { type: string, minLength: 1, description: "Trimmed; non-empty if present." }
         image: { type: string, format: uri, description: "Single image URL." }
-        recipeYield: { type: string, description: "String; numbers are coerced." }
+        recipeYield:
+          description: "On write, a string or number (number is coerced to string). Always a string in responses."
+          oneOf:
+            - { type: string }
+            - { type: number }
         prepTime: { type: string, description: "ISO 8601 duration, e.g. PT10M." }
         cookTime: { type: string, description: "ISO 8601 duration." }
         totalTime: { type: string, description: "ISO 8601 duration." }
@@ -222,7 +246,7 @@ components:
           oneOf:
             - { type: string }
             - { type: array, items: { type: string } }
-        notes: { type: string, description: "Freeform cook's notes." }
+        notes: { type: string, minLength: 1, description: "Freeform cook's notes; trimmed, non-empty if present." }
         nutrition:
           type: object
           description: >
@@ -231,8 +255,8 @@ components:
             data is computable. On write, values MUST be numbers — unit-strings like
             "22 g" are rejected. The public page's JSON-LD renders these as schema.org
             unit strings ("31 g", "420 calories"); this API body keeps numbers.
-            Everything optional; omit the whole object if unknown.
-          additionalProperties: false
+            Everything optional; omit the whole object if unknown. Unknown sub-keys
+            are stripped on write (not rejected), like unknown top-level fields.
           properties:
             calories: { type: number, minimum: 0, description: "kcal per serving." }
             proteinContent: { type: number, minimum: 0, description: "grams per serving." }
@@ -253,6 +277,10 @@ components:
               type: string
               enum: [public, draft]
               default: draft
+              description: >
+                Default applies to CREATE (POST) only — omitting it there creates a
+                draft. On PUT (replace), omitting it leaves the current visibility
+                unchanged.
 
     RecipeResponse:
       description: >
@@ -262,8 +290,12 @@ components:
       allOf:
         - { $ref: "#/components/schemas/Recipe" }
         - type: object
-          required: [slug, visibility, tags, createdAt, updatedAt]
+          required: [slug, visibility, tags, createdAt, updatedAt, recipeInstructions]
           properties:
+            recipeInstructions:
+              type: array
+              description: Always present (defaults to []) and always HowToStep[] in responses.
+              items: { $ref: "#/components/schemas/HowToStep" }
             slug: { type: string }
             visibility: { type: string, enum: [public, draft] }
             tags: { type: array, items: { type: string } }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Manage recipes on {{API_BASE}} — the full CRUD suite (mirrors the MCP tools).
+"""Manage recipes on {{API_BASE}} — read + write, no delete (mirrors the MCP tools).
 
 Subcommands:
   list [--public-only] [--tag T] [--limit N] [--offset N]
@@ -13,7 +13,9 @@ Subcommands:
   search <text> [--tag T] [--limit N] [--offset N] [--public-only]
                                              free-text search over name, description,
                                              ingredients, notes (drafts by default)
-  validate <recipe.json>                     check a recipe/patch locally, offline
+  validate [--patch] <recipe.json>           check a recipe/patch locally, offline
+                                             (--patch: an update patch — name and
+                                             recipeIngredient not required)
 
 To take a recipe off the site, unpublish it (set-visibility draft). Permanent
 deletion is intentionally NOT available here — it is an owner-only operation.

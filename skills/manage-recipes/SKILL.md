@@ -21,7 +21,7 @@ Run `python recipes.py <command>`:
 |---|---|
 | `list [--public-only] [--tag T] [--limit N] [--offset N]` | List recipes. **Drafts are included by default** (you have write access); add `--public-only` to preview just what the public sees. |
 | `get <slug>` | Full recipe JSON by slug. |
-| `tags` | All tags currently in use. |
+| `tags` | All tags currently in use (scans the 100 most recent recipes). |
 | `create <recipe.json>` | Create a recipe. |
 | `update <slug> <patch.json>` | **Merge** the patch into an existing recipe. |
 | `set-visibility <slug> <public\|draft>` | Publish or unpublish. |
@@ -35,7 +35,9 @@ For `create`, `update`, and `validate`, write the JSON to a file first, then pas
 - **Default new recipes to `draft`** unless the user explicitly asks to publish
   publicly. Drafts are saved but hidden from the public site.
 - **`update` is a merge:** only the fields you put in the patch change; omitted
-  fields are preserved. The **slug never changes**, even if you change `name`.
+  fields are preserved. The **slug never changes**, even if you change `name`. A
+  `null` value in a patch is **ignored** (it does not clear a field); to empty an
+  array, send `[]`.
 - **Adding to an array is NOT a partial patch.** `recipeIngredient`,
   `recipeInstructions`, and `keywords` are replaced *entirely* when included in a
   patch. To *add* an item (e.g. "add cumin"), first `get <slug>`, append to the
@@ -62,10 +64,10 @@ For `create`, `update`, and `validate`, write the JSON to a file first, then pas
   **Validating an `update` patch? Pass `--patch`** — a patch sends only the fields you're
   changing, so without it `validate` falsely fails on missing `name`/`recipeIngredient`.
   `--patch` drops just those two required checks; every present field is still type-checked.
-- **On success, report what the command prints:** `create` and `set-visibility
-  public` print the recipe's public URL; `list`, `get`, and `tags` print data to
-  relay to the user; `set-visibility draft` confirms it's now hidden; `update`
-  prints the updated URL. On a validation error, fix the JSON and retry.
+- **On success, report what the command prints:** `create` and `update` print the
+  recipe's public URL; `set-visibility` prints a confirmation (`<slug> is now
+  public` / `draft`), **not** a URL; `list`, `get`, `tags`, and `search` print
+  data to relay to the user. On a validation error, fix the JSON and retry.
 
 ## Recipe JSON schema (for create / update patches)
 
@@ -78,7 +80,7 @@ For `create`, `update`, and `validate`, write the JSON to a file first, then pas
   ],
   "description": "A hearty weeknight chili.",   // optional
   "image": "https://…/photo.jpg",               // optional, URL
-  "recipeYield": "4 servings",                   // optional, string
+  "recipeYield": "4 servings",                   // optional; string (a number is accepted, coerced)
   "prepTime": "PT20M",                            // optional, ISO 8601 duration
   "cookTime": "PT45M",                            // optional, ISO 8601 duration
   "totalTime": "PT65M",                           // optional, ISO 8601 duration
