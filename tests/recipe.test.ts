@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatDuration } from "@/lib/format";
-import { deriveTags, recipeJsonLdSchema, toJsonLd } from "@/lib/recipe";
+import { deriveTags, nutritionDisplay, recipeJsonLdSchema, toJsonLd } from "@/lib/recipe";
 import { displayTags, hashtag, tagHref } from "@/lib/tags";
 
 const minimal = { name: "Toast", recipeIngredient: ["bread"] };
@@ -218,6 +218,18 @@ describe("nutrition", () => {
   it("omits nutrition from JSON-LD when absent", () => {
     const ld = toJsonLd(recipeJsonLdSchema.parse(minimal), "https://justmy.recipes/recipes/x");
     expect(ld).not.toHaveProperty("nutrition");
+  });
+
+  it("nutritionDisplay returns ordered labelled rows for present keys only", () => {
+    expect(nutritionDisplay({ proteinContent: 31, calories: 420, fatContent: 22 })).toEqual([
+      { label: "Cal", value: "420" },
+      { label: "Protein", value: "31 g" },
+      { label: "Fat", value: "22 g" },
+    ]);
+  });
+
+  it("nutritionDisplay is empty when nutrition is absent", () => {
+    expect(nutritionDisplay(undefined)).toEqual([]);
   });
 });
 

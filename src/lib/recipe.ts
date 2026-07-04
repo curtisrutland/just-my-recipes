@@ -165,3 +165,36 @@ export function toJsonLd(doc: RecipeJsonLd, url: string) {
     url,
   };
 }
+
+/** Ordered label/unit config for the on-page nutrition strip. */
+const NUTRITION_DISPLAY: {
+  key: keyof NonNullable<RecipeJsonLd["nutrition"]>;
+  label: string;
+  gram: boolean;
+}[] = [
+  { key: "calories", label: "Cal", gram: false },
+  { key: "proteinContent", label: "Protein", gram: true },
+  { key: "fatContent", label: "Fat", gram: true },
+  { key: "carbohydrateContent", label: "Carbs", gram: true },
+  { key: "fiberContent", label: "Fiber", gram: true },
+  { key: "sugarContent", label: "Sugar", gram: true },
+  { key: "sodiumContent", label: "Sodium", gram: true },
+  { key: "saturatedFatContent", label: "Sat Fat", gram: true },
+];
+
+/**
+ * Human-facing nutrition rows for the recipe page (present keys only), in a fixed
+ * order with display labels + units — e.g. `{ label: "Protein", value: "31 g" }`.
+ * Distinct from `toJsonLd`, which uses schema.org keys for structured data.
+ */
+export function nutritionDisplay(
+  nutrition: RecipeJsonLd["nutrition"],
+): { label: string; value: string }[] {
+  if (!nutrition) return [];
+  const rows: { label: string; value: string }[] = [];
+  for (const { key, label, gram } of NUTRITION_DISPLAY) {
+    const v = nutrition[key];
+    if (v != null) rows.push({ label, value: gram ? `${v} g` : String(v) });
+  }
+  return rows;
+}

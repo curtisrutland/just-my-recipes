@@ -12,7 +12,7 @@ import { WakeBarButton, WakeCard, WakeLockProvider } from "@/components/WakeLock
 import { getPublicRecipe } from "@/lib/cached";
 import { formatDuration } from "@/lib/format";
 import { getPublicSlugs } from "@/lib/queries";
-import { toJsonLd } from "@/lib/recipe";
+import { nutritionDisplay, toJsonLd } from "@/lib/recipe";
 import { SITE_URL } from "@/lib/site";
 import { displayTags, tagHref } from "@/lib/tags";
 
@@ -65,6 +65,7 @@ export default async function RecipePage({ params }: Params) {
   ].filter((m): m is { label: string; value: string } => Boolean(m));
 
   const pills = displayTags(data);
+  const nutrition = nutritionDisplay(data.nutrition);
 
   return (
     <WakeLockProvider>
@@ -121,6 +122,30 @@ export default async function RecipePage({ params }: Params) {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Nutrition strip — mirrors the meta strip; only when present. */}
+          {nutrition.length > 0 && (
+            <div className="mt-2.5">
+              <div className="flex flex-wrap overflow-hidden rounded-lg border border-line bg-surface">
+                {nutrition.map((n) => (
+                  <div
+                    key={n.label}
+                    className="min-w-[74px] flex-1 border-r border-line px-3.5 py-[9px] last:border-r-0"
+                  >
+                    <div className="text-label uppercase text-muted opacity-85">
+                      {n.label}
+                    </div>
+                    <div className="mt-0.5 font-display text-meta text-ink">
+                      {n.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-1 text-caption text-muted">
+                Per serving · estimated
+              </div>
             </div>
           )}
 
