@@ -54,6 +54,9 @@ npm run dev          # http://localhost:3000
 | `CLERK_ALLOWED_USER_ID`| admin   | The single owner's Clerk user id — the `/admin` (and MCP) allowlist. |
 | `SKILLS_API_BASE`      | build   | Origin the Skill build targets (default `https://justmy.recipes`). Do **not** use `NEXT_PUBLIC_SITE_URL` (localhost in dev). Read by `scripts/build-skills.mjs`. |
 
+**Full reference** — every variable, required-ness, and where each is read:
+[`docs/environment.md`](docs/environment.md).
+
 ## Database & migrations
 
 Schema lives in `src/lib/db/schema.ts` (two tables: `users`, `recipes`).
@@ -188,6 +191,9 @@ variables above (Neon vars are injected by the integration) — at minimum
 `justmy.recipes` as the custom domain. `next build` prerenders the index, recipe,
 and tag pages; writes revalidate them on-demand. The `/admin` routes render
 dynamically (owner-gated).
+
+Full setup + operations runbook: [`docs/deploy.md`](docs/deploy.md). System
+architecture (data model, caching, auth): [`docs/architecture.md`](docs/architecture.md).
 
 ## Project structure
 

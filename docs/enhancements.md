@@ -12,9 +12,9 @@ Status key: `idea` (captured, unscoped) · `scoped` (has a plan) · `in-progress
 
 | Item | Notes | Size | Status |
 |---|---|---|---|
-| Complete env-var reference | One doc listing all ~10 vars + which surface uses each. Deferred P2 from the 2026-07-04 doc audit; README table is a partial stopgap. | S | idea |
-| Architecture doc | One-pager: Cache Components (`use cache` vs uncached admin reads), `revalidateForRecipe`/cache-tag model, Neon-http constraints, JSONB recipe model. Deferred P2. | M | idea |
-| Deploy / runbook doc | Vercel + Clerk (dev vs prod instance, DNS) + Neon + `skills:build` release steps. Currently only in private memory. Deferred P2. | M | idea |
+| Complete env-var reference | All 10 vars grouped by surface, with required-ness + where each is read. | S | **done** → [`docs/environment.md`](environment.md) |
+| Architecture doc | Surfaces, data model, Cache Components (cached vs uncached reads), `revalidateForRecipe`/cache-tag model, auth, write flow. | M | **done** → [`docs/architecture.md`](architecture.md) |
+| Deploy / runbook doc | Vercel auto-deploy, provisioning, Clerk (dev/prod), Skill release + token rotation, deploy verification (incl. the stale-404 gotcha), rollback. | M | **done** → [`docs/deploy.md`](deploy.md) |
 
 ## Search
 
