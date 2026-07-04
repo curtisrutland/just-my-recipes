@@ -10,6 +10,7 @@ Subcommands:
   create <recipe.json>                       create (draft unless visibility=public)
   update <slug> <patch.json>                 MERGE patch into an existing recipe
   set-visibility <slug> <public|draft>       publish / unpublish
+  validate <recipe.json>                     check a recipe/patch locally, offline
 
 To take a recipe off the site, unpublish it (set-visibility draft). Permanent
 deletion is intentionally NOT available here — it is an owner-only operation.
@@ -18,6 +19,7 @@ Recipe JSON schema is documented in SKILL.md. Standard library only.
 Values are injected at build time from .env.local (do not hand-edit).
 """
 import json
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -162,6 +164,157 @@ def cmd_set_visibility(args):
     print(f"{slug} is now {vis}")
 
 
+# --- validate: offline schema check ------------------------------------------------
+# Rules transcribed from the live schema as of Phase 3 (2026-07): Recipe / RecipeWrite
+# / HowToStep / NutritionInformation in openapi.yaml + src/lib/recipe.ts. This is an
+# offline convenience mirror of server validation, NOT the source of truth (the server
+# still validates on write). stdlib only; do NOT fetch the spec at runtime. Keep in
+# sync with recipe.ts when the schema changes.
+_ISO8601_DURATION = re.compile(
+    r"^P(?=\d|T\d)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+(?:\.\d+)?S)?)?$"
+)
+_KNOWN_TOP_FIELDS = {
+    "name", "description", "image", "recipeYield", "prepTime", "cookTime", "totalTime",
+    "recipeIngredient", "recipeInstructions", "recipeCategory", "recipeCuisine",
+    "keywords", "notes", "nutrition", "visibility",
+}
+_NUTRITION_KEYS = {
+    "calories", "proteinContent", "fatContent", "carbohydrateContent",
+    "fiberContent", "sugarContent", "sodiumContent", "saturatedFatContent",
+}
+
+
+def _nonempty_str(v):
+    return isinstance(v, str) and v.strip() != ""
+
+
+def _is_number(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def cmd_validate(args):
+    if not args:
+        _die("usage: validate <recipe.json>")
+    try:
+        with open(args[0]) as f:
+            doc = json.load(f)
+    except json.JSONDecodeError as e:
+        _die(f"invalid JSON: {e}")
+    if not isinstance(doc, dict):
+        _die("top-level value must be a JSON object")
+
+    errors = {}      # path -> [messages]  (mirrors the API's error.details)
+    warnings = []    # human-readable strings
+
+    def err(path, msg):
+        errors.setdefault(path, []).append(msg)
+
+    # name — required
+    if "name" not in doc:
+        err("name", "required")
+    elif not _nonempty_str(doc["name"]):
+        err("name", "must be a non-empty string")
+
+    # recipeIngredient — required, >=1 non-empty strings
+    ri = doc.get("recipeIngredient")
+    if ri is None:
+        err("recipeIngredient", "required")
+    elif not isinstance(ri, list) or len(ri) < 1:
+        err("recipeIngredient", "must be a non-empty array of strings")
+    else:
+        for i, el in enumerate(ri):
+            if not _nonempty_str(el):
+                err(f"recipeIngredient.{i}", "must be a non-empty string")
+
+    # recipeInstructions — optional; string or HowToStep
+    ins = doc.get("recipeInstructions")
+    if ins is not None:
+        if not isinstance(ins, list):
+            err("recipeInstructions", "must be an array")
+        else:
+            for i, el in enumerate(ins):
+                p = f"recipeInstructions.{i}"
+                if isinstance(el, str):
+                    if el.strip() == "":
+                        err(p, "step string must be non-empty")
+                elif isinstance(el, dict):
+                    if not _nonempty_str(el.get("text")):
+                        err(f"{p}.text", "required, non-empty")
+                    if "name" in el:
+                        if not _nonempty_str(el["name"]):
+                            err(f"{p}.name", "if present, must be non-empty")
+                        elif len(el["name"]) > 120:
+                            err(f"{p}.name", "max 120 characters")
+                    if "@type" in el and el["@type"] != "HowToStep":
+                        err(f"{p}.@type", 'must be "HowToStep"')
+                else:
+                    err(p, "must be a string or a HowToStep object")
+
+    # image — optional; basic http(s) URL
+    if "image" in doc and not (
+        _nonempty_str(doc["image"]) and re.match(r"^https?://[^\s]+$", doc["image"])
+    ):
+        err("image", "must be a valid http(s) URL")
+
+    # durations — optional; ISO 8601
+    for fld in ("prepTime", "cookTime", "totalTime"):
+        if fld in doc and not (isinstance(doc[fld], str) and _ISO8601_DURATION.match(doc[fld])):
+            err(fld, "must be an ISO 8601 duration, e.g. PT20M or PT1H30M")
+
+    # recipeYield — optional string; number is a warning (coerced server-side)
+    if "recipeYield" in doc:
+        v = doc["recipeYield"]
+        if _is_number(v):
+            warnings.append("recipeYield: number is coerced to a string server-side; a string like '4 servings' is clearer")
+        elif not isinstance(v, str):
+            err("recipeYield", "must be a string")
+
+    # category / cuisine / keywords — optional; string or array of strings
+    for fld in ("recipeCategory", "recipeCuisine", "keywords"):
+        if fld in doc:
+            v = doc[fld]
+            if not (isinstance(v, str) or (isinstance(v, list) and all(isinstance(x, str) for x in v))):
+                err(fld, "must be a string or an array of strings")
+
+    # visibility — optional enum
+    if "visibility" in doc and doc["visibility"] not in ("public", "draft"):
+        err("visibility", 'must be "public" or "draft"')
+
+    # notes / description — optional strings
+    for fld in ("notes", "description"):
+        if fld in doc and not isinstance(doc[fld], str):
+            err(fld, "must be a string")
+
+    # nutrition — optional object of non-negative numbers (units-in-a-string is an ERROR)
+    if "nutrition" in doc:
+        nut = doc["nutrition"]
+        if not isinstance(nut, dict):
+            err("nutrition", "must be an object of numeric values")
+        else:
+            for k, v in nut.items():
+                p = f"nutrition.{k}"
+                if k in _NUTRITION_KEYS:
+                    if not _is_number(v):
+                        err(p, "use a plain number, grams/kcal implied, per serving (not a string like '22 g')")
+                    elif v < 0:
+                        err(p, "must be non-negative")
+                else:
+                    warnings.append(f"nutrition.{k}: unknown key — dropped on write (did you mean e.g. proteinContent?)")
+
+    # unknown top-level fields — server strips silently, so warn (likely a typo)
+    for k in doc:
+        if k not in _KNOWN_TOP_FIELDS:
+            warnings.append(f"{k}: unknown top-level field — silently dropped on write (typo?)")
+
+    for w in warnings:
+        print(f"warning: {w}", file=sys.stderr)
+    if errors:
+        print("validation failed — the server would reject this:", file=sys.stderr)
+        print(json.dumps(errors, indent=2, sort_keys=True), file=sys.stderr)
+        sys.exit(1)
+    print("OK — valid" + (f" ({len(warnings)} warning(s))" if warnings else ""))
+
+
 CMDS = {
     "list": cmd_list,
     "get": cmd_get,
@@ -169,6 +322,7 @@ CMDS = {
     "create": cmd_create,
     "update": cmd_update,
     "set-visibility": cmd_set_visibility,
+    "validate": cmd_validate,
 }
 
 

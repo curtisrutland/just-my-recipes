@@ -168,6 +168,59 @@ describe("toJsonLd", () => {
   });
 });
 
+describe("nutrition", () => {
+  it("accepts numeric macros and preserves them", () => {
+    const r = recipeJsonLdSchema.parse({
+      ...minimal,
+      nutrition: { calories: 420, proteinContent: 31 },
+    });
+    expect(r.nutrition).toEqual({ calories: 420, proteinContent: 31 });
+  });
+
+  it("rejects a unit-string value like '22 g'", () => {
+    expect(
+      recipeJsonLdSchema.safeParse({ ...minimal, nutrition: { proteinContent: "22 g" } }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a negative value", () => {
+    expect(
+      recipeJsonLdSchema.safeParse({ ...minimal, nutrition: { calories: -5 } }).success,
+    ).toBe(false);
+  });
+
+  it("strips unknown nutrition sub-keys", () => {
+    const r = recipeJsonLdSchema.parse({
+      ...minimal,
+      nutrition: { proteinContent: 31, protein: 99 },
+    });
+    expect(r.nutrition).toEqual({ proteinContent: 31 });
+  });
+
+  it("is optional (absent by default)", () => {
+    expect(recipeJsonLdSchema.parse(minimal)).not.toHaveProperty("nutrition");
+  });
+
+  it("renders as schema.org NutritionInformation strings in JSON-LD", () => {
+    const doc = recipeJsonLdSchema.parse({
+      ...minimal,
+      nutrition: { calories: 420, proteinContent: 31, fatContent: 22 },
+    });
+    const ld = toJsonLd(doc, "https://justmy.recipes/recipes/x");
+    expect(ld.nutrition).toEqual({
+      "@type": "NutritionInformation",
+      calories: "420 calories",
+      proteinContent: "31 g",
+      fatContent: "22 g",
+    });
+  });
+
+  it("omits nutrition from JSON-LD when absent", () => {
+    const ld = toJsonLd(recipeJsonLdSchema.parse(minimal), "https://justmy.recipes/recipes/x");
+    expect(ld).not.toHaveProperty("nutrition");
+  });
+});
+
 describe("display helpers", () => {
   it("displayTags preserves case and dedupes case-insensitively", () => {
     const doc = recipeJsonLdSchema.parse({

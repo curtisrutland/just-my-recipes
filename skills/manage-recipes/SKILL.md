@@ -25,8 +25,9 @@ Run `python recipes.py <command>`:
 | `create <recipe.json>` | Create a recipe. |
 | `update <slug> <patch.json>` | **Merge** the patch into an existing recipe. |
 | `set-visibility <slug> <public\|draft>` | Publish or unpublish. |
+| `validate <recipe.json>` | **Offline** schema check of a recipe/patch — no network. |
 
-For `create` and `update`, write the JSON to a file first, then pass its path.
+For `create`, `update`, and `validate`, write the JSON to a file first, then pass its path.
 
 ## Behavior & safety rules
 
@@ -47,6 +48,11 @@ For `create` and `update`, write the JSON to a file first, then pass its path.
   (reversible). This Skill cannot permanently delete recipes — that's an
   owner-only operation done directly against the API. If the user asks to delete,
   unpublish it and tell them permanent deletion is done separately.
+- **Preflight with `validate`** before `create`/`update` on anything nontrivial: it
+  checks the JSON against the schema **locally, no network**, and prints errors as a
+  field-path → message map (plus warnings for likely typos). Fix errors before writing.
+  It's advisory — the server still validates — but it catches mistakes cheaply. A common
+  one it flags hard: nutrition values written as `"22 g"` strings instead of numbers.
 - **On success, report what the command prints:** `create` and `set-visibility
   public` print the recipe's public URL; `list`, `get`, and `tags` print data to
   relay to the user; `set-visibility draft` confirms it's now hidden; `update`
@@ -76,6 +82,13 @@ For `create` and `update`, write the JSON to a file first, then pass its path.
   "recipeCuisine": ["tex-mex"],                    // optional, array of strings
   "keywords": ["chili", "beef"],                   // optional, array of strings
   "notes": "Better the next day.",                 // optional, freeform
+  "nutrition": {                                    // optional; schema.org, PER SERVING
+    "calories": 420,                                //   plain NUMBERS only — never "22 g"
+    "proteinContent": 31,                           //   grams
+    "fatContent": 22,
+    "carbohydrateContent": 18
+    // also allowed: fiberContent, sugarContent, sodiumContent, saturatedFatContent
+  },
   "visibility": "draft"                            // optional: "public" | "draft"
 }
 ```
@@ -83,3 +96,8 @@ For `create` and `update`, write the JSON to a file first, then pass its path.
 Durations are ISO 8601 (`PT20M` = 20 min, `PT1H30M` = 90 min). The server
 generates the slug from `name`; never set an id or slug. For an `update` patch,
 include only the fields you want to change.
+
+**Nutrition is numbers, not strings.** Values are plain numbers — grams for the
+macros, kcal for `calories` — **per serving** (paired with `recipeYield`). Do **not**
+write `"22 g"`; write `22`. The site adds units when it renders; the API stores and
+returns numbers so they stay computable.

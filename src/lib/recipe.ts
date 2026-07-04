@@ -51,6 +51,38 @@ const instruction = z
           : { "@type": "HowToStep", text: v.text },
   );
 
+// schema.org NutritionInformation subset. STORED as plain numbers (grams for the
+// mass macros, kcal for calories), per serving — Curtis's use is computational.
+// Unit-strings like "22 g" are rejected here; units are added only on render, by the
+// JSON-LD serializer (`toJsonLd`), never stored. Everything optional; omit the whole
+// key if unknown. Unknown sub-keys are stripped (Zod object default), like top-level.
+const nonNegNumber = z
+  .number({ message: "use a plain number (grams/kcal implied, per serving)" })
+  .nonnegative();
+export const nutritionSchema = z
+  .object({
+    calories: nonNegNumber.optional(),
+    proteinContent: nonNegNumber.optional(),
+    fatContent: nonNegNumber.optional(),
+    carbohydrateContent: nonNegNumber.optional(),
+    fiberContent: nonNegNumber.optional(),
+    sugarContent: nonNegNumber.optional(),
+    sodiumContent: nonNegNumber.optional(),
+    saturatedFatContent: nonNegNumber.optional(),
+  })
+  .optional();
+
+/** schema.org NutritionInformation gram-based keys (rendered with a "g" suffix). */
+const NUTRITION_GRAM_KEYS = [
+  "proteinContent",
+  "fatContent",
+  "carbohydrateContent",
+  "fiberContent",
+  "sugarContent",
+  "sodiumContent",
+  "saturatedFatContent",
+] as const;
+
 export const recipeJsonLdSchema = z.object({
   name: z.string().trim().min(1, "name is required"),
   description: z.string().trim().min(1).optional(),
@@ -70,6 +102,7 @@ export const recipeJsonLdSchema = z.object({
   recipeCuisine: stringList.optional(),
   keywords: stringList.optional(),
   notes: z.string().trim().min(1).optional(),
+  nutrition: nutritionSchema,
 });
 
 /** The canonical stored/served recipe document (schema.org/Recipe subset). */
@@ -106,12 +139,29 @@ export function deriveTags(doc: RecipeJsonLd): string[] {
   return tags;
 }
 
+/**
+ * Render stored numeric nutrition as a schema.org `NutritionInformation` object with
+ * unit strings (`31` → `"31 g"`, `420` → `"420 calories"`). JSON-LD requires strings;
+ * the raw numbers must never leak into the public structured data.
+ */
+function nutritionToJsonLd(n: NonNullable<RecipeJsonLd["nutrition"]>) {
+  const out: Record<string, string> = { "@type": "NutritionInformation" };
+  if (n.calories != null) out.calories = `${n.calories} calories`;
+  for (const key of NUTRITION_GRAM_KEYS) {
+    const v = n[key];
+    if (v != null) out[key] = `${v} g`;
+  }
+  return out;
+}
+
 /** Wrap the stored document as a full JSON-LD object for `<script>` emission. */
 export function toJsonLd(doc: RecipeJsonLd, url: string) {
+  const { nutrition, ...rest } = doc;
   return {
     "@context": "https://schema.org",
     "@type": "Recipe",
-    ...doc,
+    ...rest,
+    ...(nutrition ? { nutrition: nutritionToJsonLd(nutrition) } : {}),
     url,
   };
 }

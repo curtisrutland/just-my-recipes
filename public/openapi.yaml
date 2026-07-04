@@ -210,6 +210,25 @@ components:
             - { type: string }
             - { type: array, items: { type: string } }
         notes: { type: string, description: "Freeform cook's notes." }
+        nutrition:
+          type: object
+          description: >
+            schema.org NutritionInformation, per serving. STORED and returned in this
+            API as plain numbers (grams for the mass macros, kcal for calories) so the
+            data is computable. On write, values MUST be numbers — unit-strings like
+            "22 g" are rejected. The public page's JSON-LD renders these as schema.org
+            unit strings ("31 g", "420 calories"); this API body keeps numbers.
+            Everything optional; omit the whole object if unknown.
+          additionalProperties: false
+          properties:
+            calories: { type: number, minimum: 0, description: "kcal per serving." }
+            proteinContent: { type: number, minimum: 0, description: "grams per serving." }
+            fatContent: { type: number, minimum: 0, description: "grams per serving." }
+            carbohydrateContent: { type: number, minimum: 0, description: "grams per serving." }
+            fiberContent: { type: number, minimum: 0, description: "grams per serving." }
+            sugarContent: { type: number, minimum: 0, description: "grams per serving." }
+            sodiumContent: { type: number, minimum: 0, description: "grams per serving." }
+            saturatedFatContent: { type: number, minimum: 0, description: "grams per serving." }
 
     RecipeWrite:
       description: A recipe document plus an optional visibility.
