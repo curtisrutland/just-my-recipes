@@ -10,6 +10,12 @@ export function SiteFooter({ children }: { children?: React.ReactNode }) {
       </span>
       <span className="inline-flex items-center gap-2.5">
         <a
+          href="/admin"
+          className="text-muted underline-offset-2 hover:underline"
+        >
+          Admin
+        </a>
+        <a
           href="/openapi.json"
           className="text-muted underline-offset-2 hover:underline"
         >

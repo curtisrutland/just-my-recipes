@@ -159,8 +159,9 @@ sub-phase or at the end, your call.
    (proposed) vs. raw ISO text fields. Affects form ergonomics only.
 2. **Delete friction** — single inline confirm (proposed) vs. type-the-slug challenge on the
    final draft delete.
-3. **Admin entry point** — how you reach `/admin`: bookmark only (nothing rendered publicly)
-   vs. an owner-only link surfaced in the footer/header when signed in.
+3. **Admin entry point** — RESOLVED: a plain, always-visible `Admin` link in the site footer
+   (public tree stays Clerk-free — non-owners who click it just hit sign-in). It's fine for the
+   admin surface to be publicly known to exist.
 4. **Sign-in surface** — Clerk-hosted redirect (proposed, least code) vs. an embedded
    `<SignIn>` on an `/admin/sign-in` route.
 5. **Dashboard ordering/scale** — current `listRecipeRows` orders by `createdAt desc` with a
