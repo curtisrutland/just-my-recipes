@@ -10,6 +10,9 @@ Subcommands:
   create <recipe.json>                       create (draft unless visibility=public)
   update <slug> <patch.json>                 MERGE patch into an existing recipe
   set-visibility <slug> <public|draft>       publish / unpublish
+  search <text> [--tag T] [--limit N] [--offset N] [--public-only]
+                                             free-text search over name, description,
+                                             ingredients, notes (drafts by default)
   validate <recipe.json>                     check a recipe/patch locally, offline
 
 To take a recipe off the site, unpublish it (set-visibility draft). Permanent
@@ -22,6 +25,7 @@ import json
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 API_BASE = "{{API_BASE}}"
@@ -162,6 +166,53 @@ def cmd_set_visibility(args):
     if status != 200:
         _die(f"set-visibility failed ({status}): {json.dumps(body)}")
     print(f"{slug} is now {vis}")
+
+
+def cmd_search(args):
+    text = None
+    extra = []  # (key, value) query params passed through to the API
+    public_only = False
+    it = iter(args)
+    for a in it:
+        if a == "--public-only":
+            public_only = True
+        elif a == "--tag":
+            extra.append(("tag", next(it)))
+        elif a == "--limit":
+            extra.append(("limit", next(it)))
+        elif a == "--offset":
+            extra.append(("offset", next(it)))
+        elif text is None:
+            text = a
+        else:
+            _die(f"unexpected argument: {a}")
+    if not text or not text.strip():
+        _die("usage: search <text> [--tag T] [--limit N] [--offset N] [--public-only]")
+
+    # Dependency gate: the API silently ignores unknown query params, so if `q` isn't
+    # live a search would return EVERYTHING. Probe with an impossible token first — if
+    # it still matches anything, `q` is being ignored; abort loudly rather than mislead.
+    probe_qs = urllib.parse.urlencode(
+        [("q", "zzqx_no_such_recipe_9f3k_probe"), ("limit", "1"), ("include", "drafts")]
+    )
+    status, body = _req("GET", f"/api/recipes?{probe_qs}", auth=True)
+    if status != 200:
+        _die(f"search probe failed ({status}): {body}")
+    if body.get("count") or body.get("recipes"):
+        _die(
+            "Aborting: the API is ignoring the `q` parameter (an impossible query still "
+            "returned results), so search would silently return everything. The API's `q` "
+            "support must be deployed before search can be used."
+        )
+
+    query = [("q", text.strip()), *extra]
+    if not public_only:
+        query.append(("include", "drafts"))
+    status, body = _req("GET", f"/api/recipes?{urllib.parse.urlencode(query)}", auth=True)
+    if status != 200:
+        _die(f"search failed ({status}): {body}")
+    for r in body["recipes"]:
+        print(f"{r['slug']}  [{r['visibility']}]  {r.get('name', '')}")
 
 
 # --- validate: offline schema check ------------------------------------------------
@@ -322,6 +373,7 @@ CMDS = {
     "create": cmd_create,
     "update": cmd_update,
     "set-visibility": cmd_set_visibility,
+    "search": cmd_search,
     "validate": cmd_validate,
 }
 

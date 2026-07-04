@@ -25,6 +25,7 @@ Run `python recipes.py <command>`:
 | `create <recipe.json>` | Create a recipe. |
 | `update <slug> <patch.json>` | **Merge** the patch into an existing recipe. |
 | `set-visibility <slug> <public\|draft>` | Publish or unpublish. |
+| `search <text> [--tag T] [--limit N] [--offset N] [--public-only]` | Free-text search over name, description, ingredients, notes. |
 | `validate <recipe.json>` | **Offline** schema check of a recipe/patch — no network. |
 
 For `create`, `update`, and `validate`, write the JSON to a file first, then pass its path.
@@ -48,6 +49,11 @@ For `create`, `update`, and `validate`, write the JSON to a file first, then pas
   (reversible). This Skill cannot permanently delete recipes — that's an
   owner-only operation done directly against the API. If the user asks to delete,
   unpublish it and tell them permanent deletion is done separately.
+- **`search` vs `list --tag`:** `search` is *fuzzy free-text* over name, description,
+  ingredients, and notes ("find the venison thing"). `--tag` is an *exact* match on a
+  recipe's keywords/category/cuisine. Use `search` for prose, `--tag` for a known tag;
+  they compose — `search "braise" --tag weeknight` matches "braise" in text **and** the
+  "weeknight" tag. Drafts are included by default (like `list`); `--public-only` drops them.
 - **Preflight with `validate`** before `create`/`update` on anything nontrivial: it
   checks the JSON against the schema **locally, no network**, and prints errors as a
   field-path → message map (plus warnings for likely typos). Fix errors before writing.
