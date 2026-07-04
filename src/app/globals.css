@@ -1,26 +1,176 @@
 @import "tailwindcss";
 
+/* Dark mode is driven by a `.dark` class on <html> (set from prefers-color-scheme
+   by a tiny inline script in the root layout). Make `dark:` variants follow it. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Design tokens ──────────────────────────────────────────────────────────
+   Ten color tokens, identical names across themes; only the values swap.
+   Everything visual routes through these, so a class flip is the whole
+   dark-mode mechanism. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #faf8f2;
+  --surface: #ffffff;
+  --surface-sunken: #f6f1e6;
+  --ink: #211d17;
+  --muted: #8d8471;
+  --line: #e5dfd0;
+  --accent: #c1552e;
+  --accent-soft: #fbf1ea;
+  --accent-line: #e7cdba;
+  --accent-glow: rgb(193 85 46 / 0.2);
+  /* Method step-number badge (theme-specific: ink chip in light). */
+  --step-bg: #211d17;
+  --step-ink: #faf8f2;
+}
+
+.dark {
+  --paper: #17140f;
+  --surface: #1e1a14;
+  --surface-sunken: #1c1913;
+  --ink: #ece5d6;
+  --muted: #9c9384;
+  --line: #302b22;
+  --accent: #e0793f;
+  --accent-soft: #26201a;
+  --accent-line: #4a3a2c;
+  --accent-glow: rgb(224 121 63 / 0.26);
+  /* Accent chip in dark. */
+  --step-bg: #e0793f;
+  --step-ink: #17140f;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+  --color-step-bg: var(--step-bg);
+  --color-step-ink: var(--step-ink);
+
+  --font-display: var(--font-zilla), Georgia, serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+
+  --text-display-lg: 2.75rem;
+  --text-display-lg--line-height: 1.04;
+  --text-display-lg--letter-spacing: -0.015em;
+  --text-display-lg--font-weight: 700;
+
+  --text-display-sm: 1.8125rem;
+  --text-display-sm--line-height: 1.06;
+  --text-display-sm--letter-spacing: -0.015em;
+  --text-display-sm--font-weight: 700;
+
+  --text-heading: 1.1875rem;
+  --text-heading--line-height: 1.2;
+  --text-heading--font-weight: 700;
+
+  --text-meta: 1rem;
+  --text-meta--line-height: 1.2;
+  --text-meta--font-weight: 600;
+
+  --text-body-lg: 1.0625rem;
+  --text-body-lg--line-height: 1.5;
+
+  --text-label: 0.656rem;
+  --text-label--line-height: 1;
+  --text-label--letter-spacing: 0.09em;
+
+  --text-tag: 0.75rem;
+  --text-tag--line-height: 1;
+
+  --text-caption: 0.719rem;
+  --text-caption--line-height: 1.35;
+
+  --shadow-wake: 0 0 0 4px var(--accent-glow);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Pulsing white dot on the active "keep screen on" toggle. */
+@keyframes jmrPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(255 255 255 / 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgb(255 255 255 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(255 255 255 / 0);
+  }
+}
+
+@utility wake-pulse {
+  animation: jmrPulse 1.6s ease-out infinite;
+}
+
+/* Hide the horizontal scrollbar on the tag-filter row. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ── Print: recipe detail is a first-class output ───────────────────────────
+   Chrome is stripped with Tailwind `print:hidden`; step/ingredient/title point
+   sizes with `print:text-[..pt]`. This block forces an ink-friendly palette
+   regardless of on-screen theme, lays the body out in two columns to fit one
+   page, and controls page breaks. */
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .recipe-detail {
+    --paper: #fff;
+    --surface: #fff;
+    --surface-sunken: #fff;
+    --ink: #000;
+    --muted: #474747;
+    --line: #cec9bc;
+    --accent: #000;
+    --accent-soft: #fff;
+    --accent-line: #b4ae9f;
+    --step-bg: #000;
+    --step-ink: #fff;
+    color: #000;
+  }
+
+  /* ingredients narrower (1fr), method wider (1.55fr) — land on one page */
+  .recipe-cols {
+    display: grid !important;
+    grid-template-columns: 1fr 1.55fr !important;
+    gap: 26px !important;
+    margin-top: 16px !important;
+  }
+
+  /* never orphan a heading or split a step/ingredient across pages */
+  .recipe-detail h1,
+  .recipe-detail h2,
+  .recipe-detail h3 {
+    break-after: avoid-page;
+  }
+  .recipe-detail li,
+  .recipe-cols > section {
+    break-inside: avoid;
+  }
+}
+
+@page {
+  margin: 15mm;
 }
