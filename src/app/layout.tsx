@@ -15,6 +15,15 @@ export const metadata: Metadata = {
   title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
   description: "A personal recipe collection. No stories.",
   openGraph: { siteName: SITE_NAME, type: "website", url: "/" },
+  icons: {
+    icon: [
+      { url: "/favicons/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicons/favicon-48.png", sizes: "48x48", type: "image/png" },
+      { url: "/favicons/favicon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: { url: "/favicons/apple-touch-icon.png", sizes: "180x180" },
+  },
 };
 
 // Apply the `.dark` class from the OS preference before paint (no toggle UI in v1).
