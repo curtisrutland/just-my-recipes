@@ -29,3 +29,15 @@ export async function requireOwner(): Promise<string> {
   if (!userId) notFound();
   return userId;
 }
+
+/**
+ * Owner assertion for **server actions**. Fails closed by throwing (a rejected
+ * action) rather than `notFound()`, which is a rendering concern. Every admin
+ * mutation calls this first, independent of the middleware redirect and the
+ * page-level gate — a crafted POST to an action must still be the owner.
+ */
+export async function assertOwner(): Promise<string> {
+  const userId = await getOwnerUserId();
+  if (!userId) throw new Error("Unauthorized");
+  return userId;
+}

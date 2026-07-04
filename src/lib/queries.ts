@@ -152,6 +152,23 @@ export async function updateRecipe(
   return rows[0] ?? null;
 }
 
+/**
+ * Flip only the visibility column (publish/unpublish). Unlike `updateRecipe`,
+ * this touches nothing in the JSONB `data` or denormalized `title`/`tags`, so a
+ * toggle can never mangle the document. Returns false if no such slug.
+ */
+export async function setRecipeVisibility(
+  slug: string,
+  visibility: Visibility,
+): Promise<boolean> {
+  const rows = await db
+    .update(recipes)
+    .set({ visibility, updatedAt: new Date() })
+    .where(eq(recipes.slug, slug))
+    .returning({ slug: recipes.slug });
+  return rows.length > 0;
+}
+
 export async function deleteRecipe(slug: string): Promise<boolean> {
   const rows = await db
     .delete(recipes)
