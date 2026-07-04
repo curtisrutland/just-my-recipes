@@ -14,8 +14,8 @@
 // The emitted folder contains your live token, so it is gitignored. Never commit
 // .skills-dist/. Edit the templates in skills/ (which carry placeholders only).
 import { config } from "dotenv";
+import { execFileSync } from "node:child_process";
 import {
-  cpSync,
   mkdirSync,
   readdirSync,
   readFileSync,
@@ -45,16 +45,30 @@ const inject = (text) =>
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 
-const skills = readdirSync(SRC, { withFileTypes: true }).filter((d) => d.isDirectory());
+const skills = readdirSync(SRC, { withFileTypes: true }).filter(
+  (d) => d.isDirectory() && d.name !== "node_modules",
+);
 for (const skill of skills) {
   const inDir = join(SRC, skill.name);
   const outDir = join(OUT, skill.name);
   mkdirSync(outDir, { recursive: true });
   for (const file of readdirSync(inDir)) {
+    if (file === "README.md") continue; // repo doc, not part of the skill
     writeFileSync(join(outDir, file), inject(readFileSync(join(inDir, file), "utf8")));
   }
-  console.log(`✓ built skill: ${skill.name}`);
+  // Emit an uploadable zip as a sibling of the folder: .skills-dist/<skill>.zip
+  // (folder-wrapped, so it contains <skill>/SKILL.md — the layout claude.ai accepts).
+  let zipped = "";
+  try {
+    execFileSync("zip", ["-qr", `${skill.name}.zip`, skill.name, "-x", "*__pycache__*"], {
+      cwd: OUT,
+    });
+    zipped = ` + ${skill.name}.zip`;
+  } catch (e) {
+    zipped = ` (zip skipped: ${e.message.split("\n")[0]})`;
+  }
+  console.log(`✓ built skill: ${skill.name}${zipped}`);
 }
 
 console.log(`\nEmitted ${skills.length} skill(s) to ${OUT}/ (gitignored, token injected).`);
-console.log("Upload a skill's folder to claude.ai → Settings → Capabilities/Skills.");
+console.log("Upload the <skill>.zip in that folder to claude.ai → Settings → Capabilities/Skills.");
