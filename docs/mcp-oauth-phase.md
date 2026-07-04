@@ -1,6 +1,6 @@
 # Phase: MCP Server + OAuth + Editing
 
-Status: **built · compiles + builds green · runtime OAuth not yet verified** · Target client: **claude.ai (web + mobile)**
+Status: **built · verified locally (OAuth + all 7 tools green via MCP Inspector)** · Target client: **claude.ai (web + mobile)**
 Branch: **`mcp-oauth`** (all work for this phase lives here; keep `main` clean until it ships)
 Claude plan: **Max** ✅ (custom-connector gate cleared)
 
@@ -213,17 +213,25 @@ Files added:
 **Connector URL** (register in claude.ai): `https://justmy.recipes/api/mcp`
 
 Verified: `tsc --noEmit` clean; `next build` green; all MCP/metadata routes emit as
-dynamic (`ƒ`); Clerk proxy active. **NOT yet verified:** the live OAuth flow, single-user
-allowlist rejection, and a real create/edit round-trip — these need real Clerk keys + a
-claude.ai connection (see §9 rollout).
+dynamic (`ƒ`); Clerk proxy active. **Runtime-verified locally via MCP Inspector** (dev Clerk
+instance `vital-fox-61`): metadata endpoints serve correct RFC 9728/8414 docs pointing at
+Clerk; DCR `registration_endpoint` live; unauth call returns the 401 `WWW-Authenticate`
+challenge; full OAuth login (DCR → Clerk hosted login + email code → token) completes; the
+single-user allowlist accepts the owner; all 7 tools execute green; DB left clean afterward.
 
-### Remaining manual steps (need real Clerk keys)
-1. Create a Clerk application; **enable Dynamic Client Registration** (OAuth Applications page).
-2. Create your own Clerk user; copy its `user_...` id.
-3. Fill `.env.local` (placeholders already added): `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`,
-   `CLERK_SECRET_KEY`, `CLERK_ALLOWED_USER_ID`. Mirror these into Vercel env.
-4. `npm run dev`, test with MCP Inspector (`npx @modelcontextprotocol/inspector`).
-5. Deploy to a Vercel preview; add `https://<preview>/api/mcp` as a claude.ai custom connector.
+### Done ✅
+1. Clerk app created; **Dynamic Client Registration enabled**.
+2. Owner Clerk user created; `CLERK_ALLOWED_USER_ID` set.
+3. `.env.local` filled (dev keys `pk_test_`/`sk_test_`).
+4. `npm run dev` + MCP Inspector: OAuth + all 7 tools verified green.
+
+### Still to do
+5. Deploy branch to a Vercel **preview**; set the 3 Clerk env vars in Vercel (dev keys OK for
+   preview); add `https://<preview>/api/mcp` as a claude.ai custom connector; verify from
+   claude.ai itself.
+6. **Production** (`justmy.recipes`): stand up a Clerk **production instance** (add the domain
+   + Clerk Frontend-API DNS, use `pk_live_`/`sk_live_`), set prod env, merge to `main`,
+   register the production connector at `https://justmy.recipes/api/mcp`.
 
 ## 12. Risks / watch-items
 
