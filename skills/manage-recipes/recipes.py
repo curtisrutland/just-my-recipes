@@ -236,6 +236,17 @@ _NUTRITION_KEYS = {
     "fiberContent", "sugarContent", "sodiumContent", "saturatedFatContent",
 }
 
+# --- canonical tag vocabularies ---
+# recipeCategory is a CLOSED set: a non-canonical value is a HARD error (exit 1),
+# because courses are enumerable and a value outside the set is almost certainly a
+# mistake. To allow a genuinely new course, add it HERE — this is the one place.
+_CATEGORY_CANONICAL = ("Main Course", "Breakfast", "Side", "Dessert", "Condiment", "Drink")
+# recipeCuisine is an OPEN seed: values not listed still PASS, with a warning.
+# Cuisines are open-ended (Thai, Cajun, …), so a novel value is legitimate; the
+# warning only catches typos/casing. Not exhaustive, not authoritative — extend
+# the seed if the warnings get noisy.
+_CUISINE_SEED = ("American", "Mexican", "Tex-Mex")
+
 
 def _nonempty_str(v):
     return isinstance(v, str) and v.strip() != ""
@@ -243,6 +254,17 @@ def _nonempty_str(v):
 
 def _is_number(v):
     return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _canonical_match(value, canon):
+    """(exact, suggestion): exact=True if `value` is in `canon` verbatim. If it only
+    matches case-insensitively, `suggestion` is the canonical casing; else None."""
+    for c in canon:
+        if value == c:
+            return True, None
+        if value.casefold() == c.casefold():
+            return False, c
+    return False, None
 
 
 def cmd_validate(args):
@@ -337,6 +359,34 @@ def cmd_validate(args):
             v = doc[fld]
             if not (isinstance(v, str) or (isinstance(v, list) and all(isinstance(x, str) for x in v))):
                 err(fld, "must be a string or an array of strings")
+
+    # canonical tag vocabulary — recipeCategory HARD-FAILS on a non-canonical course;
+    # recipeCuisine only WARNS (open set). Both run only on a value that passed the
+    # shape check above, so a wrong-type field yields ONE error, not a stacked pair.
+    # `keywords` is deliberately untouched — fragmentation there is intentional.
+    def _tag_values(fld):
+        v = doc.get(fld)
+        if isinstance(v, str):
+            return [v]
+        if isinstance(v, list) and all(isinstance(x, str) for x in v):
+            return v
+        return None  # absent or wrong type — nothing to vocab-check here
+
+    for v in _tag_values("recipeCategory") or []:
+        exact, suggestion = _canonical_match(v, _CATEGORY_CANONICAL)
+        if not exact:
+            if suggestion:
+                err("recipeCategory", f'"{v}" is not a canonical course; did you mean "{suggestion}"?')
+            else:
+                err("recipeCategory", f'"{v}" is not a canonical course (allowed: {", ".join(_CATEGORY_CANONICAL)})')
+
+    for v in _tag_values("recipeCuisine") or []:
+        exact, suggestion = _canonical_match(v, _CUISINE_SEED)
+        if not exact:
+            if suggestion:
+                warnings.append(f'recipeCuisine: "{v}" — did you mean "{suggestion}"?')
+            else:
+                warnings.append(f'recipeCuisine: "{v}" is not a recognized cuisine (typo? otherwise fine — seed list is not exhaustive)')
 
     # visibility — optional enum
     if "visibility" in doc and doc["visibility"] not in ("public", "draft"):

@@ -26,7 +26,7 @@ Run `python recipes.py <command>`:
 | `update <slug> <patch.json>` | **Merge** the patch into an existing recipe. |
 | `set-visibility <slug> <public\|draft>` | Publish or unpublish. |
 | `search <text> [--tag T] [--limit N] [--offset N] [--public-only]` | Free-text search over name, description, ingredients, notes. |
-| `validate [--patch] <recipe.json>` | **Offline** schema check — no network. Add `--patch` to check an `update` patch (`name`/`recipeIngredient` not required). |
+| `validate [--patch] <recipe.json>` | **Offline** schema check — no network. Also enforces the canonical `recipeCategory` set (hard error) and warns on unrecognized `recipeCuisine` values (see Tagging conventions). Add `--patch` to check an `update` patch (`name`/`recipeIngredient` not required). |
 
 For `create`, `update`, and `validate`, write the JSON to a file first, then pass its path.
 
@@ -68,6 +68,22 @@ For `create`, `update`, and `validate`, write the JSON to a file first, then pas
   recipe's public URL; `set-visibility` prints a confirmation (`<slug> is now
   public` / `draft`), **not** a URL; `list`, `get`, `tags`, and `search` print
   data to relay to the user. On a validation error, fix the JSON and retry.
+
+## Tagging conventions
+
+The three tag axes are distinct — keep them clean so exact-match `--tag` filtering works.
+`validate` enforces the first two.
+
+- **`recipeCategory` = course**, title-cased, from a **closed canonical set**: `Main Course`,
+  `Breakfast`, `Side`, `Dessert`, `Condiment`, `Drink`. It is **not** meal-timing —
+  `dinner`/`lunch`/`rest day` belong in `keywords`. A non-canonical category is a **hard
+  `validate` error**; to add a genuinely new course, edit `_CATEGORY_CANONICAL` in `recipes.py`.
+- **`recipeCuisine` = culinary origin**, title-cased (`American`, `Mexican`, `Tex-Mex`, …).
+  **Open set:** an unrecognized cuisine **warns** (typo check) but passes. Don't tag by a single
+  ingredient — chili powder doesn't make a dish Mexican.
+- **`keywords` = lowercase**, and carry a **broad anchor plus specifics** (a beef dish gets bare
+  `beef` *and* `ground beef`) so exact-match `--tag beef` catches it. Before adding a recipe, run
+  `tags` and reuse an existing keyword rather than coining a near-synonym.
 
 ## Recipe JSON schema (for create / update patches)
 
