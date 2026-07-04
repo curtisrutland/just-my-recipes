@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/cache-tags", () => ({ revalidateForRecipe: vi.fn() }));
 vi.mock("@/lib/queries", () => ({
   listRecipeRows: vi.fn(),
+  countRecipes: vi.fn(),
   createRecipe: vi.fn(),
   getRecipeRow: vi.fn(),
   updateRecipe: vi.fn(),
@@ -26,6 +27,7 @@ const auth = { authorization: `Bearer ${KEY}` };
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.RECIPES_API_KEY = KEY;
+  vi.mocked(queries.countRecipes).mockResolvedValue(0);
 });
 
 function body(url: string, method: string, data?: unknown, headers: Record<string, string> = {}) {
@@ -39,18 +41,31 @@ const ctx = (slug: string) => ({ params: Promise.resolve({ slug }) });
 const B = "http://localhost/api/recipes";
 
 describe("GET /api/recipes", () => {
-  it("lists public recipes only by default", async () => {
+  it("lists public recipes only by default; count is total matches, not page length", async () => {
     vi.mocked(queries.listRecipeRows).mockResolvedValue([
       { slug: "a", visibility: "public", data: { name: "A" } },
     ] as never);
+    vi.mocked(queries.countRecipes).mockResolvedValue(3); // total across pages
     const res = await collection.GET(new Request(B));
     expect(res.status).toBe(200);
-    expect((await res.json()).count).toBe(1);
+    const json = await res.json();
+    expect(json.recipes).toHaveLength(1);
+    expect(json.count).toBe(3); // from countRecipes, not rows.length
     expect(vi.mocked(queries.listRecipeRows).mock.calls[0][0]).toMatchObject({
       includeDrafts: false,
       limit: 50,
       offset: 0,
     });
+  });
+
+  it("passes q + tag through to both queries and returns count as total", async () => {
+    vi.mocked(queries.listRecipeRows).mockResolvedValue([] as never);
+    vi.mocked(queries.countRecipes).mockResolvedValue(42);
+    const res = await collection.GET(new Request(`${B}?q=venison&tag=weeknight`));
+    expect((await res.json()).count).toBe(42);
+    for (const fn of [queries.listRecipeRows, queries.countRecipes]) {
+      expect(vi.mocked(fn).mock.calls[0][0]).toMatchObject({ q: "venison", tag: "weeknight" });
+    }
   });
 
   it("ignores ?include=drafts without a valid key", async () => {

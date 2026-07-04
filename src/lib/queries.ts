@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql, type SQL } from "drizzle-orm";
 import { db } from "./db";
 import {
   recipes,
@@ -45,15 +45,44 @@ async function uniqueSlug(name: string): Promise<string> {
 
 export type ListOptions = {
   tag?: string;
+  q?: string;
   limit: number;
   offset: number;
   includeDrafts: boolean;
 };
 
-export async function listRecipeRows(opts: ListOptions): Promise<RecipeRow[]> {
-  const conds = [];
+/**
+ * WHERE conditions shared by `listRecipeRows` and `countRecipes`, so the page and
+ * the total count always filter identically.
+ *
+ * `q` is free-text, case-insensitive substring over name (via the denormalized
+ * `title` column), `description`, `notes`, and any single `recipeIngredient` line.
+ * Deliberately NOT over keywords/category/cuisine (that's what `tag` is for) or
+ * instructions/nutrition. Plain `ILIKE` — `unaccent` is not enabled on the DB, so
+ * accent-insensitivity is a future nicety, not this phase. `tag` and `q` compose as AND.
+ */
+function recipeFilters(opts: ListOptions): SQL[] {
+  const conds: SQL[] = [];
   if (!opts.includeDrafts) conds.push(eq(recipes.visibility, "public"));
   if (opts.tag) conds.push(sql`${opts.tag.toLowerCase()} = ANY(${recipes.tags})`);
+  const q = opts.q?.trim();
+  if (q) {
+    const needle = `%${q}%`;
+    conds.push(sql`(
+      ${recipes.title} ILIKE ${needle}
+      OR ${recipes.data}->>'description' ILIKE ${needle}
+      OR ${recipes.data}->>'notes' ILIKE ${needle}
+      OR EXISTS (
+        SELECT 1 FROM jsonb_array_elements_text(${recipes.data}->'recipeIngredient') AS ing
+        WHERE ing ILIKE ${needle}
+      )
+    )`);
+  }
+  return conds;
+}
+
+export async function listRecipeRows(opts: ListOptions): Promise<RecipeRow[]> {
+  const conds = recipeFilters(opts);
   return db
     .select()
     .from(recipes)
@@ -61,6 +90,16 @@ export async function listRecipeRows(opts: ListOptions): Promise<RecipeRow[]> {
     .orderBy(desc(recipes.createdAt))
     .limit(opts.limit)
     .offset(opts.offset);
+}
+
+/** Total rows matching the same filters, ignoring limit/offset — for `count`. */
+export async function countRecipes(opts: ListOptions): Promise<number> {
+  const conds = recipeFilters(opts);
+  const rows = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(recipes)
+    .where(conds.length ? and(...conds) : undefined);
+  return Number(rows[0]?.n ?? 0);
 }
 
 export async function getRecipeRow(slug: string): Promise<RecipeRow | null> {

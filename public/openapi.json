@@ -40,6 +40,15 @@
             "description": "Filter to recipes carrying this tag (case-insensitive)."
           },
           {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Free-text, case-insensitive substring search over name, description, ingredients, and notes. NOT over keywords/category/cuisine (use `tag`), instructions, or nutrition. Combined with `tag` via AND. Empty/whitespace is a no-op.\n"
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
@@ -100,7 +109,8 @@
                       "type": "integer"
                     },
                     "count": {
-                      "type": "integer"
+                      "type": "integer",
+                      "description": "Total number of recipes matching the filters (tag/q/visibility), ignoring limit/offset — i.e. \"N of count\".\n"
                     }
                   }
                 }

@@ -32,6 +32,15 @@ paths:
           required: false
           schema: { type: string }
           description: Filter to recipes carrying this tag (case-insensitive).
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+          description: >
+            Free-text, case-insensitive substring search over name, description,
+            ingredients, and notes. NOT over keywords/category/cuisine (use `tag`),
+            instructions, or nutrition. Combined with `tag` via AND. Empty/whitespace
+            is a no-op.
         - name: limit
           in: query
           required: false
@@ -59,7 +68,11 @@ paths:
                     items: { $ref: "#/components/schemas/RecipeResponse" }
                   limit: { type: integer }
                   offset: { type: integer }
-                  count: { type: integer }
+                  count:
+                    type: integer
+                    description: >
+                      Total number of recipes matching the filters (tag/q/visibility),
+                      ignoring limit/offset — i.e. "N of count".
     post:
       tags: [recipes]
       summary: Create a recipe

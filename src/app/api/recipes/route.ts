@@ -1,7 +1,7 @@
 import { isAuthorized } from "@/lib/auth";
 import { revalidateForRecipe } from "@/lib/cache-tags";
 import { errorResponse, unauthorized, validationErrorResponse } from "@/lib/errors";
-import { createRecipe, listRecipeRows, serializeRecipe } from "@/lib/queries";
+import { countRecipes, createRecipe, listRecipeRows, serializeRecipe } from "@/lib/queries";
 import { recipeWriteSchema } from "@/lib/recipe";
 
 function clampInt(raw: string | null, fallback: number, min: number, max: number) {
@@ -11,22 +11,25 @@ function clampInt(raw: string | null, fallback: number, min: number, max: number
   return Math.min(Math.max(n, min), max);
 }
 
-// GET /api/recipes — public list. `?tag=`, `?limit=` (default 50, max 100),
-// `?offset=`. With a valid key + `?include=drafts`, drafts are included.
+// GET /api/recipes — public list. `?tag=`, `?q=` (free-text), `?limit=` (default
+// 50, max 100), `?offset=`. With a valid key + `?include=drafts`, drafts are
+// included. `count` is the total matching rows (ignores limit/offset).
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const tag = params.get("tag") ?? undefined;
+  const q = params.get("q") ?? undefined;
   const includeDrafts =
     params.get("include") === "drafts" && isAuthorized(request);
   const limit = clampInt(params.get("limit"), 50, 1, 100);
   const offset = clampInt(params.get("offset"), 0, 0, Number.MAX_SAFE_INTEGER);
 
-  const rows = await listRecipeRows({ tag, limit, offset, includeDrafts });
+  const opts = { tag, q, limit, offset, includeDrafts };
+  const [rows, count] = await Promise.all([listRecipeRows(opts), countRecipes(opts)]);
   return Response.json({
     recipes: rows.map(serializeRecipe),
     limit,
     offset,
-    count: rows.length,
+    count,
   });
 }
 
