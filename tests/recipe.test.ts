@@ -75,6 +75,76 @@ describe("recipeJsonLdSchema", () => {
   });
 });
 
+describe("HowToStep name", () => {
+  it("retains name on a named step", () => {
+    const r = recipeJsonLdSchema.parse({
+      ...minimal,
+      recipeInstructions: [
+        { "@type": "HowToStep", name: "Fry the paste", text: "Push it aside." },
+      ],
+    });
+    expect(r.recipeInstructions[0]).toEqual({
+      "@type": "HowToStep",
+      name: "Fry the paste",
+      text: "Push it aside.",
+    });
+  });
+
+  it("leaves plain-string and unnamed object steps without a name", () => {
+    const r = recipeJsonLdSchema.parse({
+      ...minimal,
+      recipeInstructions: ["Just do it", { "@type": "HowToStep", text: "And this" }],
+    });
+    expect(r.recipeInstructions[0]).not.toHaveProperty("name");
+    expect(r.recipeInstructions[1]).not.toHaveProperty("name");
+  });
+
+  it("allows mixed named and unnamed steps in one recipe", () => {
+    const r = recipeJsonLdSchema.parse({
+      ...minimal,
+      recipeInstructions: [{ name: "Prep", text: "Chop." }, "Cook it."],
+    });
+    expect(r.recipeInstructions[0].name).toBe("Prep");
+    expect(r.recipeInstructions[1]).not.toHaveProperty("name");
+  });
+
+  it("rejects an empty or whitespace-only name", () => {
+    expect(
+      recipeJsonLdSchema.safeParse({
+        ...minimal,
+        recipeInstructions: [{ name: "", text: "x" }],
+      }).success,
+    ).toBe(false);
+    expect(
+      recipeJsonLdSchema.safeParse({
+        ...minimal,
+        recipeInstructions: [{ name: "   ", text: "x" }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a name over 120 chars", () => {
+    expect(
+      recipeJsonLdSchema.safeParse({
+        ...minimal,
+        recipeInstructions: [{ name: "a".repeat(121), text: "x" }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("still strips unknown step fields other than name", () => {
+    const r = recipeJsonLdSchema.parse({
+      ...minimal,
+      recipeInstructions: [{ name: "Prep", text: "x", bogus: 1, image: "y" }],
+    });
+    expect(r.recipeInstructions[0]).toEqual({
+      "@type": "HowToStep",
+      name: "Prep",
+      text: "x",
+    });
+  });
+});
+
 describe("deriveTags", () => {
   it("unions category + cuisine + keywords, lowercased and deduped", () => {
     const doc = recipeJsonLdSchema.parse({

@@ -162,6 +162,11 @@ components:
       required: [text]
       properties:
         "@type": { type: string, const: HowToStep }
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Optional short heading for the step.
         text: { type: string, minLength: 1 }
 
     Recipe:

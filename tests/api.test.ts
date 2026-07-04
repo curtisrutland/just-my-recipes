@@ -111,6 +111,32 @@ describe("POST /api/recipes", () => {
     expect(revalidateForRecipe).toHaveBeenCalledWith("toast");
   });
 
+  it("passes a named step through to createRecipe", async () => {
+    vi.mocked(queries.createRecipe).mockResolvedValue({
+      slug: "s",
+      visibility: "draft",
+      data: { name: "S" },
+    } as never);
+    await collection.POST(
+      body(
+        B,
+        "POST",
+        {
+          name: "S",
+          recipeIngredient: ["x"],
+          recipeInstructions: [{ name: "Prep", text: "Chop." }],
+        },
+        auth,
+      ),
+    );
+    const doc = vi.mocked(queries.createRecipe).mock.calls[0][0];
+    expect(doc.recipeInstructions[0]).toEqual({
+      "@type": "HowToStep",
+      name: "Prep",
+      text: "Chop.",
+    });
+  });
+
   it("honors visibility:public", async () => {
     vi.mocked(queries.createRecipe).mockResolvedValue({
       slug: "toast",

@@ -159,9 +159,16 @@ export default async function RecipePage({ params }: Params) {
                       <span className="mt-px flex h-[26px] w-[26px] flex-none items-center justify-center rounded-lg bg-step-bg font-display text-[14px] font-semibold text-step-ink">
                         {i + 1}
                       </span>
-                      <p className="text-body-lg leading-normal text-ink print:text-[12pt]">
-                        {step.text}
-                      </p>
+                      <div className="min-w-0">
+                        {step.name && (
+                          <div className="mb-1 font-display text-[15.5px] font-semibold leading-snug text-ink">
+                            {step.name}
+                          </div>
+                        )}
+                        <p className="text-body-lg leading-normal text-ink print:text-[12pt]">
+                          {step.text}
+                        </p>
+                      </div>
                     </li>
                   ))}
                 </ol>

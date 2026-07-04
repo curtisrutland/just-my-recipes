@@ -32,16 +32,24 @@ const stringList = z
 
 const howToStep = z.object({
   "@type": z.literal("HowToStep").optional(),
+  // Optional short heading for the step (standard schema.org vocabulary).
+  name: z.string().trim().min(1).max(120).optional(),
   text: z.string().trim().min(1),
 });
 
-// string | HowToStep → { "@type": "HowToStep", text }
+// string | HowToStep → { "@type": "HowToStep", name?, text }.
+// `name` is retained through normalization only when present; any other
+// unknown step fields are stripped by the object parse above.
 const instruction = z
   .union([z.string().trim().min(1), howToStep])
-  .transform((v) => ({
-    "@type": "HowToStep" as const,
-    text: typeof v === "string" ? v : v.text,
-  }));
+  .transform(
+    (v): { "@type": "HowToStep"; name?: string; text: string } =>
+      typeof v === "string"
+        ? { "@type": "HowToStep", text: v }
+        : v.name
+          ? { "@type": "HowToStep", name: v.name, text: v.text }
+          : { "@type": "HowToStep", text: v.text },
+  );
 
 export const recipeJsonLdSchema = z.object({
   name: z.string().trim().min(1, "name is required"),
