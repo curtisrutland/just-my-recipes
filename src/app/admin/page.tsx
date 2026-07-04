@@ -106,14 +106,24 @@ function Row({ row, kind }: { row: RecipeRow; kind: "draft" | "public" }) {
           Edit
         </Link>
         {kind === "public" ? (
-          <form action={unpublishRecipe.bind(null, row.slug)}>
-            <button
-              type="submit"
-              className="rounded-md border border-line px-2.5 py-1 text-caption text-muted transition-colors hover:border-accent-line hover:text-accent"
+          <>
+            <a
+              href={`/recipes/${row.slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-md border border-line px-2.5 py-1 text-caption text-muted no-underline transition-colors hover:border-accent-line hover:text-accent"
             >
-              Unpublish
-            </button>
-          </form>
+              View ↗
+            </a>
+            <form action={unpublishRecipe.bind(null, row.slug)}>
+              <button
+                type="submit"
+                className="rounded-md border border-line px-2.5 py-1 text-caption text-muted transition-colors hover:border-accent-line hover:text-accent"
+              >
+                Unpublish
+              </button>
+            </form>
+          </>
         ) : (
           <>
             <form action={publishRecipe.bind(null, row.slug)}>

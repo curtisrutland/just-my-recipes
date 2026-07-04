@@ -67,5 +67,17 @@ async function OwnerGate({ children }: { children: React.ReactNode }) {
 }
 
 function AdminLoading() {
-  return <div className="text-caption text-muted">Loading…</div>;
+  return (
+    <div className="flex flex-col gap-4" aria-hidden>
+      <div className="h-8 w-40 animate-pulse rounded bg-surface-sunken" />
+      <div className="flex flex-col gap-px overflow-hidden rounded-lg border border-line">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="flex items-center gap-3 bg-surface px-4 py-3">
+            <div className="h-4 flex-1 animate-pulse rounded bg-surface-sunken" />
+            <div className="h-6 w-28 animate-pulse rounded bg-surface-sunken" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

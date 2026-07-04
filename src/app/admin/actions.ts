@@ -38,7 +38,9 @@ export async function createRecipeAction(
   const row = await createRecipe(doc, visibility ?? "draft");
   revalidateForRecipe(row.slug);
   revalidatePath("/admin");
-  redirect("/admin");
+  // Land on the new recipe's editor (not the list) so it can be refined right
+  // away — the slug now exists and is shown.
+  redirect(`/admin/${row.slug}/edit`);
 }
 
 /** Update an existing recipe (full-document replace; slug is immutable). */
