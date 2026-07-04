@@ -22,7 +22,7 @@ Status key: `idea` (captured, unscoped) · `scoped` (has a plan) · `in-progress
 |---|---|---|---|
 | `unaccent` on Neon | Accent-insensitive search; needs the extension enabled on Neon. Noted in Phase 3, not enabled. | S | idea |
 | Full-text search (`tsvector`) | Replace the `?q=` ILIKE scan with a generated `tsvector` column + GIN index (schema has a placeholder comment). | M | idea |
-| Server-backed public search | **Today** the home search is a *client-side filter* over the already-loaded full list (`RecipeBrowser`; name/tag match; prefilled from `?q=`) — it does **not** hit the API. That only works while every recipe is shipped to the page, so it breaks once the list is paginated. Move public search onto the server `?q=` endpoint (already built) — **coupled to the pagination item**. Also decide: a dedicated `/search` results page vs. inline results. | M | idea |
+| Server-backed public search | Home search now hits the server `?q=` endpoint (debounced) instead of client-filtering the full list — `RecipeBrowser` is API-driven, results inline, `?q=` synced to the URL. Chosen: inline (not a `/search` page). | M | **done** (branch `ux/pagination-search`) |
 
 ## Recipe model & content
 
@@ -62,7 +62,7 @@ Status key: `idea` (captured, unscoped) · `scoped` (has a plan) · `in-progress
 | Item | Notes | Size | Status |
 |---|---|---|---|
 | Public UI/UX enhancements | Explicitly dropped from Phase 4 (which narrowed to admin only). Candidate future phase — e.g. a search results page, tag browsing polish, empty states, mobile refinements. | L | idea |
-| Pagination / load-more on the public lists | The home index and `/tags/[tag]` currently render **all** public recipes and filter client-side (`RecipeBrowser`). Add server pagination or infinite-scroll as the collection grows; the API already supports `limit`/`offset`/`count`. (The admin-dashboard equivalent is the row under **Admin UI**.) | M | idea |
+| Pagination / load-more on the public lists | **Home: done** — a static first page (`PAGE_SIZE`) then "Load more" via the API (`limit`/`offset`/`count`). **Remaining:** `/tags/[tag]` still renders all recipes for a tag — give it the same "Load more" (pure pagination, no search coupling). | M | **home done** / tags pending (branch `ux/pagination-search`) |
 | Share action on recipe pages | A share glyph on `/recipes/[slug]` — use the Web Share API (`navigator.share`) where available (mainly mobile), falling back to **copy-link to clipboard** on desktop (where the native share sheet is slim/absent). Sits alongside the existing print button. | S | idea |
 | Viewable draft pages (unlisted preview) | Render a draft on `/recipes/[slug]` with a **"Draft" badge** + `noindex` instead of 404-ing, so the owner can preview by URL without `/admin`. Drafts stay out of listings; publish stays admin-gated. Implemented: `getPublicRecipe`→`getViewableRecipe` (returns either visibility + `visibility`), badge banner + draft `robots:noindex` on the detail page. **Decision:** the REST `GET /api/recipes/{slug}` was **left key-gated** (drafts still 404 there without a key) — only the page opened. Explicit private→unlisted trade-off (title-derived slugs are guessable). | M | **done** (branch `ux/draft-preview`) |
 

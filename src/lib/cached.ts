@@ -1,7 +1,14 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { INDEX_TAG, recipeTag } from "./cache-tags";
 import { formatDuration } from "./format";
-import { getPublicTags, getRecipeRow, listRecipeRows, type Visibility } from "./queries";
+import { PAGE_SIZE } from "./pagination";
+import {
+  countRecipes,
+  getPublicTags,
+  getRecipeRow,
+  listRecipeRows,
+  type Visibility,
+} from "./queries";
 import type { RecipeRow } from "./db/schema";
 import type { RecipeJsonLd } from "./recipe";
 
@@ -31,16 +38,25 @@ function toListItem(row: RecipeRow): RecipeListItem {
   };
 }
 
-export async function getIndexRecipes(): Promise<RecipeListItem[]> {
+/**
+ * First static page of the public index + the total count, for the home landing.
+ * The first `PAGE_SIZE` recipes render statically (fast, SEO); `RecipeBrowser`
+ * then fetches further pages / search results from the API. `total` drives whether
+ * a "Load more" button is shown.
+ */
+export async function getInitialIndex(): Promise<{
+  items: RecipeListItem[];
+  total: number;
+}> {
   "use cache";
   cacheTag(INDEX_TAG);
   cacheLife("max");
-  const rows = await listRecipeRows({
-    limit: 1000,
-    offset: 0,
-    includeDrafts: false,
-  });
-  return rows.map(toListItem);
+  const opts = { limit: PAGE_SIZE, offset: 0, includeDrafts: false };
+  const [rows, total] = await Promise.all([
+    listRecipeRows(opts),
+    countRecipes(opts),
+  ]);
+  return { items: rows.map(toListItem), total };
 }
 
 export async function getTagRecipes(tag: string): Promise<RecipeListItem[]> {

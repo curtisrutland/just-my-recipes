@@ -1,62 +1,126 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RecipeListItem } from "@/lib/cached";
+import { formatDuration } from "@/lib/format";
+import { PAGE_SIZE } from "@/lib/pagination";
 import { RecipeRow } from "./RecipeRow";
 import { SiteHeader } from "./SiteHeader";
 import { SearchIcon } from "./icons";
 
 /**
- * The index: live client-side search + tag filtering over the already-rendered
- * list (no fetch — the page stays static). Search matches name OR any tag,
- * combines with the active tag chip, and is prefilled from `?q=` if present.
+ * The index: an instant static first page (server-provided), then server-backed
+ * search + tag filter + "Load more" via the public API (`/api/recipes`). The
+ * default view (no query, "All") uses the server first page with no fetch; typing
+ * or picking a tag fetches results, and "Load more" appends the next page. This
+ * scales past the point where shipping the whole list client-side would.
  */
+type ApiRecipe = {
+  slug: string;
+  name: string;
+  tags?: string[];
+  totalTime?: string;
+  image?: string;
+};
+
+function toListItem(r: ApiRecipe): RecipeListItem {
+  return {
+    slug: r.slug,
+    title: r.name,
+    tags: r.tags ?? [],
+    totalTime: formatDuration(r.totalTime),
+    image: r.image,
+  };
+}
+
 export function RecipeBrowser({
-  recipes,
+  initialItems,
+  total: initialTotal,
   tags,
 }: {
-  recipes: RecipeListItem[];
+  initialItems: RecipeListItem[];
+  total: number;
   tags: string[];
 }) {
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState("All");
+  const [items, setItems] = useState(initialItems);
+  const [total, setTotal] = useState(initialTotal);
+  const [loading, setLoading] = useState(false); // replacing the list
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  // Prefill from ?q= after mount (keeps the page statically prerendered; a
-  // deliberate post-hydration update rather than reading params during render).
+  const reqId = useRef(0);
+  const mounted = useRef(false);
+  const firstRun = useRef(true);
+
+  const qTrim = query.trim();
+
+  async function fetchPage(reset: boolean, offset: number) {
+    const id = ++reqId.current;
+    const params = new URLSearchParams();
+    if (qTrim) params.set("q", qTrim);
+    if (activeTag !== "All") params.set("tag", activeTag.toLowerCase());
+    params.set("limit", String(PAGE_SIZE));
+    params.set("offset", String(offset));
+    if (reset) setLoading(true);
+    else setLoadingMore(true);
+    try {
+      const res = await fetch(`/api/recipes?${params.toString()}`);
+      const data = await res.json();
+      if (id !== reqId.current) return; // a newer request superseded this one
+      const mapped = (data.recipes as ApiRecipe[]).map(toListItem);
+      setItems((prev) => (reset ? mapped : [...prev, ...mapped]));
+      setTotal(typeof data.count === "number" ? data.count : mapped.length);
+    } catch {
+      // network hiccup — leave the current list in place
+    } finally {
+      if (id === reqId.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    }
+  }
+
+  // Prefill ?q= once, post-hydration (keeps the page statically prerendered).
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("q");
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (q) setQuery(q);
+    mounted.current = true;
   }, []);
 
-  const q = query.trim().toLowerCase();
-  const hasQuery = q.length > 0;
-
-  const filtered = useMemo(() => {
-    let list =
-      activeTag === "All"
-        ? recipes
-        : recipes.filter((r) => r.tags.includes(activeTag.toLowerCase()));
-    if (hasQuery) {
-      list = list.filter(
-        (r) =>
-          r.title.toLowerCase().includes(q) ||
-          r.tags.some((t) => t.toLowerCase().includes(q)),
-      );
+  // Re-fetch when the (debounced) query or the tag changes. The initial mount
+  // shows the server-provided first page as-is (no fetch); every later change —
+  // including clearing back to the default view — fetches a fresh first page.
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
     }
-    return list;
-  }, [recipes, activeTag, q, hasQuery]);
+    const t = setTimeout(() => fetchPage(true, 0), 220);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qTrim, activeTag]);
+
+  // Reflect the search term in the URL (shareable/bookmarkable), after mount.
+  useEffect(() => {
+    if (!mounted.current) return;
+    const url = new URL(window.location.href);
+    if (qTrim) url.searchParams.set("q", qTrim);
+    else url.searchParams.delete("q");
+    window.history.replaceState(null, "", url);
+  }, [qTrim]);
 
   const heading = activeTag === "All" ? "All recipes" : activeTag;
-  const n = filtered.length;
-  const noun = hasQuery
-    ? n === 1
+  const noun = qTrim
+    ? total === 1
       ? "result"
       : "results"
-    : n === 1
+    : total === 1
       ? "recipe"
       : "recipes";
   const chips = ["All", ...tags];
+  const hasMore = items.length < total;
 
   return (
     <>
@@ -70,7 +134,7 @@ export function RecipeBrowser({
             aria-label="Search recipes"
             className="w-[98px] min-w-0 border-0 bg-transparent p-0 text-[13px] text-ink outline-none placeholder:text-muted md:w-[210px]"
           />
-          {hasQuery && (
+          {qTrim && (
             <button
               type="button"
               onClick={() => setQuery("")}
@@ -89,7 +153,7 @@ export function RecipeBrowser({
             {heading}
           </h1>
           <span className="whitespace-nowrap text-caption text-muted">
-            {n} {noun}
+            {loading ? "Searching…" : `${total} ${noun}`}
           </span>
         </div>
 
@@ -115,7 +179,7 @@ export function RecipeBrowser({
           })}
         </div>
 
-        {n === 0 ? (
+        {!loading && items.length === 0 ? (
           <div className="border-t border-line px-1 py-12 text-center">
             <div className="font-display text-[18px] font-bold text-ink">
               Nothing matches that.
@@ -126,11 +190,28 @@ export function RecipeBrowser({
             </div>
           </div>
         ) : (
-          <ul className="list-none border-t border-line p-0">
-            {filtered.map((r) => (
-              <RecipeRow key={r.slug} recipe={r} />
-            ))}
-          </ul>
+          <>
+            <ul
+              className={`list-none border-t border-line p-0 ${loading ? "opacity-60" : ""}`}
+              aria-busy={loading}
+            >
+              {items.map((r) => (
+                <RecipeRow key={r.slug} recipe={r} />
+              ))}
+            </ul>
+            {hasMore && (
+              <div className="mt-6 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => fetchPage(false, items.length)}
+                  disabled={loadingMore}
+                  className="rounded-md border border-line bg-surface px-4 py-2 text-caption text-muted transition-colors hover:border-accent-line hover:text-accent disabled:opacity-50"
+                >
+                  {loadingMore ? "Loading…" : `Load more (${total - items.length} more)`}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
     </>

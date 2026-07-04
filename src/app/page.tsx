@@ -1,13 +1,16 @@
 import { RecipeBrowser } from "@/components/RecipeBrowser";
 import { Shell } from "@/components/Shell";
 import { SiteFooter } from "@/components/SiteFooter";
-import { getAllTags, getIndexRecipes } from "@/lib/cached";
+import { getAllTags, getInitialIndex } from "@/lib/cached";
 
 export default async function HomePage() {
-  const [recipes, tags] = await Promise.all([getIndexRecipes(), getAllTags()]);
+  const [{ items, total }, tags] = await Promise.all([
+    getInitialIndex(),
+    getAllTags(),
+  ]);
   return (
     <Shell>
-      <RecipeBrowser recipes={recipes} tags={tags} />
+      <RecipeBrowser initialItems={items} total={total} tags={tags} />
       <SiteFooter />
     </Shell>
   );
