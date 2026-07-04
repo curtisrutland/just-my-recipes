@@ -34,6 +34,7 @@ Status key: `idea` (captured, unscoped) · `scoped` (has a plan) · `in-progress
 
 | Item | Notes | Size | Status |
 |---|---|---|---|
+| Mobile dashboard layout too cramped | On mobile the `/admin` dashboard is too tight — recipe **titles and slugs are cut off**. The row (`page.tsx` `Row`) uses `truncate` on the title/slug with fixed-width action buttons hogging the width. Review the responsive layout: e.g. stack the action buttons below the title on narrow screens, and don't truncate the slug so aggressively (or drop it on mobile). | S | idea |
 | Dashboard pagination | Currently unpaginated (`listRecipeRows({ limit: 500 })`). Fine now; revisit as the collection grows. Phase 4 §8.5. | S | idea |
 | Image upload | The `image` field is URL-only today (paste a URL). Add real upload via **Vercel Blob** (`@vercel/blob` `put()`, `access: 'public'`): an admin server action uploads the file → gets a public URL → saves it into the existing `image` field, so the data model barely changes (pairs well with `next/image`). **Free-tier verdict (checked 2026, Blob pricing page):** free on Hobby within included limits — 5 GB storage, 100 GB/mo transfer, 100K simple + 10K advanced ops, shared across the project — comfortably fits a personal site (images ~100–500 KB). Hobby is **hard-capped, not billed**: exceeding a limit pauses Blob for 30 days rather than charging. | M | idea |
 | Dark-mode toggle | Currently OS-preference only ("no toggle UI in v1"). | S | idea |
