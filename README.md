@@ -62,7 +62,8 @@ would slot into the schema — see the comment there).
 
 REST/JSON under `/api`. The contract is documented in **`openapi.yaml`**
 (OpenAPI 3.1) — the source of truth, and what a future MCP wrapper is generated
-from.
+from. Served copies are generated from it on `prebuild` (`npm run openapi:build`)
+and available at **`/openapi.json`** and **`/openapi.yaml`**.
 
 | Method | Path                  | Auth | Notes                                             |
 | ------ | --------------------- | ---- | ------------------------------------------------- |

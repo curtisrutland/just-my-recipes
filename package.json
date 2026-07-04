@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/build-openapi.mjs",
     "build": "next build",
+    "openapi:build": "node scripts/build-openapi.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -35,6 +37,7 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.0",
     "typescript": "^5",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "yaml": "^2.9.0"
   }
 }

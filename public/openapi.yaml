@@ -1,0 +1,250 @@
+openapi: 3.1.0
+info:
+  title: Just My Recipes API
+  version: 1.0.0
+  description: >
+    Public reads, owner-only writes, for a personal recipe collection. Recipes
+    are stored as a schema.org/Recipe subset. This spec is a first-class
+    deliverable: a future MCP server is generated from it. Keep it in sync with
+    the route handlers under `src/app/api`.
+servers:
+  - url: https://justmy.recipes/api
+    description: Production
+  - url: http://localhost:3000/api
+    description: Local development
+
+tags:
+  - name: recipes
+
+security: []
+
+paths:
+  /recipes:
+    get:
+      tags: [recipes]
+      summary: List recipes
+      description: >
+        Public recipes only. With a valid key and `include=drafts`, drafts are
+        included as well.
+      parameters:
+        - name: tag
+          in: query
+          required: false
+          schema: { type: string }
+          description: Filter to recipes carrying this tag (case-insensitive).
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 50, minimum: 1, maximum: 100 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, default: 0, minimum: 0 }
+        - name: include
+          in: query
+          required: false
+          schema: { type: string, enum: [drafts] }
+          description: With a valid key, `drafts` includes non-public recipes.
+      responses:
+        "200":
+          description: A page of recipes.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [recipes, limit, offset, count]
+                properties:
+                  recipes:
+                    type: array
+                    items: { $ref: "#/components/schemas/RecipeResponse" }
+                  limit: { type: integer }
+                  offset: { type: integer }
+                  count: { type: integer }
+    post:
+      tags: [recipes]
+      summary: Create a recipe
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecipeWrite" }
+      responses:
+        "201":
+          description: Created. The `Location` header points at the new resource.
+          headers:
+            Location:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecipeResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /recipes/{slug}:
+    parameters:
+      - name: slug
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [recipes]
+      summary: Get one recipe
+      description: >
+        Drafts return 404 unless a valid key is provided.
+      responses:
+        "200":
+          description: The recipe.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecipeResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [recipes]
+      summary: Replace a recipe
+      description: >
+        Full document replace. The slug is immutable; `visibility` is updatable.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecipeWrite" }
+      responses:
+        "200":
+          description: The updated recipe.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecipeResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [recipes]
+      summary: Delete a recipe
+      security:
+        - bearerAuth: []
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: >
+        `Authorization: Bearer <RECIPES_API_KEY>`. Required on all writes.
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid API key.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: No such recipe (or a draft requested without a key).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ValidationError:
+      description: The recipe document failed validation.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    HowToStep:
+      type: object
+      required: [text]
+      properties:
+        "@type": { type: string, const: HowToStep }
+        text: { type: string, minLength: 1 }
+
+    Recipe:
+      type: object
+      description: >
+        The accepted schema.org/Recipe subset. Unknown fields are stripped on
+        write, not rejected.
+      required: [name, recipeIngredient]
+      properties:
+        name: { type: string, minLength: 1 }
+        description: { type: string }
+        image: { type: string, format: uri, description: "Single image URL." }
+        recipeYield: { type: string, description: "String; numbers are coerced." }
+        prepTime: { type: string, description: "ISO 8601 duration, e.g. PT10M." }
+        cookTime: { type: string, description: "ISO 8601 duration." }
+        totalTime: { type: string, description: "ISO 8601 duration." }
+        recipeIngredient:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1 }
+        recipeInstructions:
+          description: >
+            Accepts an array of strings or HowToStep objects; normalized to
+            HowToStep[] on write.
+          type: array
+          items:
+            oneOf:
+              - { type: string }
+              - { $ref: "#/components/schemas/HowToStep" }
+        recipeCategory:
+          description: "String, comma-separated string, or array; normalized to array."
+          oneOf:
+            - { type: string }
+            - { type: array, items: { type: string } }
+        recipeCuisine:
+          oneOf:
+            - { type: string }
+            - { type: array, items: { type: string } }
+        keywords:
+          oneOf:
+            - { type: string }
+            - { type: array, items: { type: string } }
+        notes: { type: string, description: "Freeform cook's notes." }
+
+    RecipeWrite:
+      description: A recipe document plus an optional visibility.
+      allOf:
+        - { $ref: "#/components/schemas/Recipe" }
+        - type: object
+          properties:
+            visibility:
+              type: string
+              enum: [public, draft]
+              default: draft
+
+    RecipeResponse:
+      description: >
+        The stored document (normalized) plus server-managed fields.
+        `recipeInstructions` is always HowToStep[]; `tags` is the derived,
+        lowercased union of category + cuisine + keywords.
+      allOf:
+        - { $ref: "#/components/schemas/Recipe" }
+        - type: object
+          required: [slug, visibility, tags, createdAt, updatedAt]
+          properties:
+            slug: { type: string }
+            visibility: { type: string, enum: [public, draft] }
+            tags: { type: array, items: { type: string } }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details:
+              type: object
+              additionalProperties: true
+              description: >
+                For validation errors, a map of field path → messages.
