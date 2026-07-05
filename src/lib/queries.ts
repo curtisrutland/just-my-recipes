@@ -185,14 +185,22 @@ export async function getPublicSlugs(): Promise<string[]> {
   return rows.map((r) => r.slug);
 }
 
+/**
+ * Distinct public tags ordered by usage — most-used first, alphabetical as a
+ * stable tiebreak. Feeds the wrapping tag cloud (home + tag pages), so the
+ * popular tags surface first and land in the collapsed view.
+ */
 export async function getPublicTags(): Promise<string[]> {
   const rows = await db
     .select({ tags: recipes.tags })
     .from(recipes)
     .where(eq(recipes.visibility, "public"));
-  const set = new Set<string>();
-  for (const r of rows) for (const t of r.tags) set.add(t);
-  return [...set].sort();
+  const counts = new Map<string, number>();
+  for (const r of rows)
+    for (const t of r.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([tag]) => tag);
 }
 
 /** Response document: server-managed fields alongside the JSON-LD data. */

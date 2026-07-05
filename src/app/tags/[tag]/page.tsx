@@ -5,10 +5,11 @@ import { SearchAffordance } from "@/components/SearchAffordance";
 import { Shell } from "@/components/Shell";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import { TagCloud } from "@/components/TagCloud";
 import { TagRecipeList } from "@/components/TagRecipeList";
 import { getAllTags, getInitialTagIndex } from "@/lib/cached";
 import { getPublicTags } from "@/lib/queries";
-import { tagHref } from "@/lib/tags";
+import { TAG_CLOUD_COLLAPSED, tagHref } from "@/lib/tags";
 
 type Params = { params: Promise<{ tag: string }> };
 
@@ -66,9 +67,13 @@ export default async function TagPage({ params }: Params) {
           </span>
         </div>
 
-        {/* Lateral tag nav — jump between tags; current is active. */}
-        <div className="no-scrollbar my-[22px] flex gap-1.5 overflow-x-auto pb-1">
-          {allTags.map((t) => {
+        {/* Lateral tag nav — jump between tags; current is active. Starts
+            expanded when the current tag would sit in the collapsed tail, so
+            the active chip is always visible. */}
+        <TagCloud
+          className="my-[22px]"
+          defaultExpanded={allTags.indexOf(current) >= TAG_CLOUD_COLLAPSED}
+          chips={allTags.map((t) => {
             const on = t === current;
             return (
               <Link
@@ -84,7 +89,7 @@ export default async function TagPage({ params }: Params) {
               </Link>
             );
           })}
-        </div>
+        />
 
         <TagRecipeList tag={current} initialItems={items} total={total} />
       </main>

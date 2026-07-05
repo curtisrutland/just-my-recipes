@@ -6,6 +6,7 @@ import { formatDuration } from "@/lib/format";
 import { PAGE_SIZE } from "@/lib/pagination";
 import { RecipeRow } from "./RecipeRow";
 import { SiteHeader } from "./SiteHeader";
+import { TagCloud } from "./TagCloud";
 import { SearchIcon } from "./icons";
 
 /**
@@ -157,8 +158,9 @@ export function RecipeBrowser({
           </span>
         </div>
 
-        <div className="no-scrollbar mb-5 flex gap-1.5 overflow-x-auto pb-1">
-          {chips.map((label) => {
+        <TagCloud
+          className="mb-5"
+          chips={chips.map((label) => {
             const on = activeTag === label;
             return (
               <button
@@ -177,7 +179,7 @@ export function RecipeBrowser({
               </button>
             );
           })}
-        </div>
+        />
 
         {!loading && items.length === 0 ? (
           <div className="border-t border-line px-1 py-12 text-center">

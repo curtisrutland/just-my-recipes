@@ -1,6 +1,14 @@
 import type { RecipeJsonLd } from "./recipe";
 
 /**
+ * Tag chips beyond this many collapse behind the tag cloud's "Show all" toggle.
+ * Lives here (a server-safe module) rather than in the `"use client"` TagCloud
+ * so server components can read the actual value — a constant imported from a
+ * client module across the RSC boundary is a client reference, not the number.
+ */
+export const TAG_CLOUD_COLLAPSED = 12;
+
+/**
  * Original-case tag labels for display (pills), deduped case-insensitively.
  * The stored `tags` column is lowercased for querying; these preserve the
  * author's casing purely for presentation.
