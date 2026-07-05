@@ -49,6 +49,11 @@ export type ListOptions = {
   limit: number;
   offset: number;
   includeDrafts: boolean;
+  /**
+   * Restrict to exactly one visibility (admin: paginate Drafts / Published
+   * independently). When set it takes precedence over `includeDrafts`.
+   */
+  visibility?: Visibility;
 };
 
 /**
@@ -63,7 +68,8 @@ export type ListOptions = {
  */
 function recipeFilters(opts: ListOptions): SQL[] {
   const conds: SQL[] = [];
-  if (!opts.includeDrafts) conds.push(eq(recipes.visibility, "public"));
+  if (opts.visibility) conds.push(eq(recipes.visibility, opts.visibility));
+  else if (!opts.includeDrafts) conds.push(eq(recipes.visibility, "public"));
   if (opts.tag) conds.push(sql`${opts.tag.toLowerCase()} = ANY(${recipes.tags})`);
   const q = opts.q?.trim();
   if (q) {
