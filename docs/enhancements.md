@@ -28,7 +28,7 @@ Status key: `idea` (captured, unscoped) · `scoped` (has a plan) · `in-progress
 
 | Item | Notes | Size | Status |
 |---|---|---|---|
-| Recipe-as-ingredient cross-references | Reference one recipe as an ingredient of another — e.g. `scratch-made-chili-paste` is already an ingredient of `chili-con-carne-…`, but only as plain text today. Design surface to resolve when scoped: how a reference is stored (a linked ingredient line → target slug), rendering (ingredient links to the sub-recipe; optionally expand/inline its ingredients), authoring UX in the admin form + Skill, JSON-LD/print behavior, and handling a referenced recipe being unpublished or deleted (dangling link). | L | idea |
+| Recipe-as-ingredient cross-references | **Scoped** → [`docs/phase-5-recipe-references.md`](phase-5-recipe-references.md). Locked on the **inline marker** model: `recipeIngredient` stays `string[]`, a line carries `[[slug\|label]]` resolved to a link at render and flattened in JSON-LD/print. MVP (~M) = parse/flatten module + server-side resolution + link render + graceful degrade + `toJsonLd` flatten + admin insert-reference picker + Skill syntax/validate + migrate the chili example. Later: inline expand of sub-recipe ingredients, `refs` reverse index → "used in" backlinks + delete/unpublish dangling warnings. | L | **scoped** |
 
 ## Admin UI
 
