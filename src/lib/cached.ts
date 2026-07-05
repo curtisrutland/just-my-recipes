@@ -59,17 +59,25 @@ export async function getInitialIndex(): Promise<{
   return { items: rows.map(toListItem), total };
 }
 
-export async function getTagRecipes(tag: string): Promise<RecipeListItem[]> {
+/**
+ * First static page of a tag's recipes + the total count, mirroring
+ * `getInitialIndex` for `/tags/[tag]`. The first `PAGE_SIZE` render statically;
+ * `TagRecipeList` then appends further pages from the API (`?tag=&limit=&offset=`).
+ * `total` (0 when the tag is empty) drives the notFound check and "Load more".
+ */
+export async function getInitialTagIndex(tag: string): Promise<{
+  items: RecipeListItem[];
+  total: number;
+}> {
   "use cache";
   cacheTag(INDEX_TAG);
   cacheLife("max");
-  const rows = await listRecipeRows({
-    tag,
-    limit: 1000,
-    offset: 0,
-    includeDrafts: false,
-  });
-  return rows.map(toListItem);
+  const opts = { tag, limit: PAGE_SIZE, offset: 0, includeDrafts: false };
+  const [rows, total] = await Promise.all([
+    listRecipeRows(opts),
+    countRecipes(opts),
+  ]);
+  return { items: rows.map(toListItem), total };
 }
 
 export async function getAllTags(): Promise<string[]> {

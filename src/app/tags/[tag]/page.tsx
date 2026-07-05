@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { RecipeRow } from "@/components/RecipeRow";
 import { SearchAffordance } from "@/components/SearchAffordance";
 import { Shell } from "@/components/Shell";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { getAllTags, getTagRecipes } from "@/lib/cached";
+import { TagRecipeList } from "@/components/TagRecipeList";
+import { getAllTags, getInitialTagIndex } from "@/lib/cached";
 import { getPublicTags } from "@/lib/queries";
 import { tagHref } from "@/lib/tags";
 
@@ -31,11 +31,11 @@ export default async function TagPage({ params }: Params) {
   const { tag } = await params;
   const current = decodeURIComponent(tag).toLowerCase();
 
-  const [recipes, allTags] = await Promise.all([
-    getTagRecipes(current),
+  const [{ items, total }, allTags] = await Promise.all([
+    getInitialTagIndex(current),
     getAllTags(),
   ]);
-  if (recipes.length === 0) notFound();
+  if (total === 0) notFound();
 
   return (
     <Shell>
@@ -62,7 +62,7 @@ export default async function TagPage({ params }: Params) {
             </h1>
           </div>
           <span className="whitespace-nowrap text-caption text-muted">
-            {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"}
+            {total} {total === 1 ? "recipe" : "recipes"}
           </span>
         </div>
 
@@ -86,11 +86,7 @@ export default async function TagPage({ params }: Params) {
           })}
         </div>
 
-        <ul className="list-none border-t border-line p-0">
-          {recipes.map((r) => (
-            <RecipeRow key={r.slug} recipe={r} activeTag={current} />
-          ))}
-        </ul>
+        <TagRecipeList tag={current} initialItems={items} total={total} />
       </main>
 
       <SiteFooter />
