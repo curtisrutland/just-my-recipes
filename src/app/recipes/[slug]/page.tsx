@@ -6,6 +6,7 @@ import { Ingredients } from "@/components/Ingredients";
 import { JsonLd } from "@/components/JsonLd";
 import { PrintButton } from "@/components/PrintButton";
 import { SearchAffordance } from "@/components/SearchAffordance";
+import { ShareButton } from "@/components/ShareButton";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { WakeBarButton, WakeCard, WakeLockProvider } from "@/components/WakeLock";
@@ -235,7 +236,14 @@ export default async function RecipePage({ params }: Params) {
           </div>
         </article>
 
-        <SiteFooter>
+        <SiteFooter
+          actions={
+            <ShareButton
+              title={data.name}
+              url={`${SITE_URL}/recipes/${slug}`}
+            />
+          }
+        >
           <PrintButton />
         </SiteFooter>
       </div>

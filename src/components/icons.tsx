@@ -18,6 +18,28 @@ export function SearchIcon({ className }: { className?: string }) {
   );
 }
 
+export function ShareIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="m8.6 13.5 6.8 3.9M15.4 6.6 8.6 10.5" />
+    </svg>
+  );
+}
+
 export function GitHubIcon({
   size = 14,
   className,
