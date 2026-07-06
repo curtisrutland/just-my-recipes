@@ -13,7 +13,7 @@ export function SiteFooter({
   actions?: React.ReactNode;
 }) {
   return (
-    <footer className="flex items-center justify-between gap-4 border-t border-line px-5 py-4 text-caption text-muted md:px-14 print:hidden">
+    <footer className="sticky bottom-0 z-20 flex items-center justify-between gap-4 border-t border-line bg-paper px-5 py-4 text-caption text-muted md:px-14 print:hidden">
       <span>
         justmy.recipes · No stories.
         {children ? <> {children}</> : null}
