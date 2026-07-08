@@ -3,6 +3,36 @@
 A one-page map of how justmy.recipes fits together. For the API contract see
 `openapi.yaml`; for env vars see `docs/environment.md`; for deploy see `docs/deploy.md`.
 
+**This doc exists so you don't have to rediscover the codebase.** If it can't
+answer your question, prefer reading the specific module named below over a
+codebase-wide search.
+
+## Codebase map (where things live)
+
+| Concern | Module | Notes |
+|---|---|---|
+| **DB access (the one place)** | `src/lib/queries.ts` | Every read/write funnels here. `recipeFilters` (shared by `listRecipeRows` + `countRecipes`), `getRecipeRow`, `createRecipe`/`updateRecipe`, column-only toggles (`setRecipeVisibility`, …), and `serializeRecipe` — **the REST/MCP response shape** (spreads server-managed `slug`/`visibility`/`tags`/timestamps over `...row.data`). |
+| **Schema (validator + type)** | `src/lib/recipe.ts` | `recipeWriteSchema` / `RecipeJsonLd` — the single source of truth (see below). Also `deriveTags`, `toJsonLd`, nutrition render helpers. |
+| **DB tables** | `src/lib/db/schema.ts` | Drizzle table defs; `RecipeRow`/`NewRecipeRow` types. |
+| **Cached public reads** | `src/lib/cached.ts` | `"use cache"` wrappers + the `RecipeListItem`/`RecipeDetail` page-facing shapes. |
+| **Cache invalidation** | `src/lib/cache-tags.ts` | `INDEX_TAG`, `recipeTag`, `revalidateForRecipe`. |
+| **REST API** | `src/app/api/recipes/route.ts`, `.../[slug]/route.ts` | GET (public list/detail), POST/PUT (token), DELETE (primary key only). |
+| **Admin server actions** | `src/app/admin/actions.ts` | Owner-gated writes; the admin UI never holds an API token. |
+| **Admin UI** | `src/app/admin/` | `page.tsx` (dashboard rows), `RecipeForm.tsx`, `[slug]/edit`, `new`. |
+| **Public UI** | `src/app/page.tsx`, `src/components/RecipeBrowser.tsx` (+ `RecipeRow`, `TagCloud`), `src/app/recipes/[slug]/page.tsx`, `src/app/tags/[tag]/` | `RecipeBrowser` is API-driven (static first page, then `/api/recipes?…`). |
+| **Skill** | `skills/manage-recipes/` | Templated stdlib Python CLI (`SKILL.md` + `recipes.py`), built by `scripts/build-skills.mjs` (injects `RECIPES_PUBLISH_TOKEN` from `.env.local`) into gitignored `skills-dist/`. Talks to the **prod** REST API; create/update/set-visibility, **no delete**. |
+
+## The column-only-toggle pattern
+
+Owner-controlled **state axes** that must never touch the recipe document live as
+**first-class columns** (not in the JSONB `data`, not in `recipeWriteSchema`),
+each with a dedicated toggle that updates only that column + `updatedAt`:
+`setRecipeVisibility` is the reference implementation. This guarantees a toggle
+can never mangle the stored document. Copy it for any new such axis; wrap it in an
+auth'd server action (admin) and/or a small dedicated endpoint (Skill/API), and
+always call `revalidateForRecipe` after. (`favorite`, if built per
+`docs/phase-6-favorites.md`, follows exactly this.)
+
 ## Stack
 
 Next.js 16 (App Router, React 19, **Cache Components**) on Vercel · Tailwind v4 (tokens in

@@ -15,6 +15,7 @@ Status key: `idea` (captured, unscoped) · `scoped` (has a plan) · `in-progress
 | Complete env-var reference | All 10 vars grouped by surface, with required-ness + where each is read. | S | **done** → [`docs/environment.md`](environment.md) |
 | Architecture doc | Surfaces, data model, Cache Components (cached vs uncached reads), `revalidateForRecipe`/cache-tag model, auth, write flow. | M | **done** → [`docs/architecture.md`](architecture.md) |
 | Deploy / runbook doc | Vercel auto-deploy, provisioning, Clerk (dev/prod), Skill release + token rotation, deploy verification (incl. the stale-404 gotcha), rollback. | M | **done** → [`docs/deploy.md`](deploy.md) |
+| Make docs discoverable (anti-rediscovery) | `AGENTS.md` now points to `docs/` (esp. `architecture.md`) so agents read the map instead of fanning out expensive exploration; `architecture.md` gained a **codebase map** (key modules) + the **column-only-toggle pattern**. Prompted by a Favorites planning session that re-derived structure already documented. | S | **done** → [`AGENTS.md`](../AGENTS.md), [`docs/architecture.md`](architecture.md) |
 
 ## Search
 
@@ -29,6 +30,7 @@ Status key: `idea` (captured, unscoped) · `scoped` (has a plan) · `in-progress
 | Item | Notes | Size | Status |
 |---|---|---|---|
 | Recipe-as-ingredient cross-references | **Scoped** → [`docs/phase-5-recipe-references.md`](phase-5-recipe-references.md). Locked on the **inline marker** model: `recipeIngredient` stays `string[]`, a line carries `[[slug\|label]]` resolved to a link at render and flattened in JSON-LD/print. MVP (~M) = parse/flatten module + server-side resolution + link render + graceful degrade + `toJsonLd` flatten + admin insert-reference picker + Skill syntax/validate + migrate the chili example. Later: inline expand of sub-recipe ingredients, `refs` reverse index → "used in" backlinks + delete/unpublish dangling warnings. | L | **scoped** |
+| Favorites | **Scoped** → [`docs/phase-6-favorites.md`](phase-6-favorites.md). A second owner-controlled axis independent of `visibility`, following the **column-only-toggle** pattern: `favorite` boolean column, `setRecipeFavorite`, admin row toggle + `favoriteRecipe`/`unfavoriteRecipe` actions, dedicated `PUT /api/recipes/{slug}/favorite` for the Skill (`set-favorite`), a public `?favorites=1` read filter with an in-browser "★ Favorites" toggle in `RecipeBrowser`, and ★ badges on rows + detail. Public is read-only. Any recipe (drafts included) can be favorited; the public view intersects with `visibility=public`. | M | **scoped** |
 
 ## Admin UI
 
