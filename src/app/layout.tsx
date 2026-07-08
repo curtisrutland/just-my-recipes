@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Zilla_Slab } from "next/font/google";
 import "./globals.css";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -26,6 +26,21 @@ export const metadata: Metadata = {
     ],
     apple: { url: "/favicons/apple-touch-icon.png", sizes: "180x180" },
   },
+  // iOS "Add to Home Screen": launch standalone (no Safari chrome) with our title.
+  appleWebApp: {
+    capable: true,
+    title: SITE_NAME,
+    statusBarStyle: "default",
+  },
+};
+
+// Drives the theme-color meta tag; matches the `--paper` token per OS scheme so the
+// iOS status bar blends into the page.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#faf8f2" },
+    { media: "(prefers-color-scheme: dark)", color: "#17140f" },
+  ],
 };
 
 // Apply the `.dark` class from the OS preference before paint (no toggle UI in v1).
