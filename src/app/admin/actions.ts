@@ -13,7 +13,8 @@ import {
   setRecipeVisibility,
   updateRecipe,
 } from "@/lib/queries";
-import { recipeWriteSchema } from "@/lib/recipe";
+import { recipeWriteSchema, toJsonLd } from "@/lib/recipe";
+import { SITE_URL } from "@/lib/site";
 
 function toIssues(error: ZodError): FieldIssue[] {
   return error.issues.map((i) => ({
@@ -93,4 +94,72 @@ export async function deleteDraftRecipe(slug: string): Promise<void> {
   await deleteRecipe(slug);
   revalidateForRecipe(slug);
   revalidatePath("/admin");
+}
+
+/** Result of a push-to-panel attempt, surfaced to the button. */
+export type SendToPanelResult = { ok: true } | { ok: false; errors: string[] };
+
+// The justmy.website kitchen-panel receiver. Sender-anonymous: it takes a
+// JSON-LD Recipe (+ top-level `notes`) and validates/normalizes on receive, so
+// we forward the recipe as-is and add no justmy.recipes-specific handshake.
+const PANEL_ENDPOINT = "https://justmy.website/api/panel/recipe";
+
+/**
+ * Push a recipe to the justmy.website kitchen panel as its active recipe.
+ *
+ * A pure server→server forward — no DB write, no revalidation. The service
+ * token lives in server env (`JMW_PANEL_SERVICE_TOKEN`) and NEVER reaches the
+ * browser: the button only calls this action. We send exactly what the detail
+ * page emits (`toJsonLd`, which already carries the top-level `notes`) and let
+ * the panel validate/normalize on receive — we do not reshape it. Passive by
+ * design: sending sets the panel's active recipe; nothing here navigates.
+ */
+export async function sendToPanel(slug: string): Promise<SendToPanelResult> {
+  await assertOwner();
+
+  const token = process.env.JMW_PANEL_SERVICE_TOKEN;
+  if (!token) {
+    return {
+      ok: false,
+      errors: ["Panel service token is not configured (JMW_PANEL_SERVICE_TOKEN)."],
+    };
+  }
+
+  const row = await getRecipeRow(slug);
+  if (!row) return { ok: false, errors: ["Recipe not found."] };
+
+  const sourceUrl = `${SITE_URL}/recipes/${slug}`;
+  const recipe = toJsonLd(row.data, sourceUrl);
+
+  let res: Response;
+  try {
+    res = await fetch(PANEL_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ recipe, sourceUrl }),
+    });
+  } catch {
+    return {
+      ok: false,
+      errors: ["Couldn't reach the panel. Check the connection and try again."],
+    };
+  }
+
+  if (res.ok) return { ok: true };
+
+  // Surface the panel's own 400 validation errors verbatim — the user has a
+  // keyboard and can fix the recipe. Anything else is a generic failure.
+  if (res.status === 400) {
+    const body = await res.json().catch(() => null);
+    const errors =
+      Array.isArray(body?.errors) && body.errors.length > 0
+        ? (body.errors as string[])
+        : ["The panel rejected the recipe (400)."];
+    return { ok: false, errors };
+  }
+
+  return { ok: false, errors: [`The panel returned an error (${res.status}).`] };
 }

@@ -40,6 +40,12 @@ Clerk is scoped to `/admin` + MCP only (`src/proxy.ts` matcher); the public site
 |---|---|---|---|
 | `SKILLS_API_BASE` | optional | `scripts/build-skills.mjs` | Origin the built Skill targets. Defaults to `https://justmy.recipes`. **Do not** use `NEXT_PUBLIC_SITE_URL` for this — that's `localhost` in dev, which would bake a localhost URL into the uploaded Skill. |
 
+## Kitchen panel (justmy.website)
+
+| Variable | Required | Read by | Notes |
+|---|---|---|---|
+| `JMW_PANEL_SERVICE_TOKEN` | optional (for "Send to panel") | `src/app/admin/actions.ts` (`sendToPanel`) | **Server-only** service token (scope `panel:write:recipe`) for pushing a recipe to the justmy.website kitchen panel. **Never** `NEXT_PUBLIC_*` — it must not reach the browser; the admin "Send to panel" button calls the server action, which holds it. Re-mint on justmy.website with `npm run panel:token -- justmy-recipes`. If unset, the button returns a clear "not configured" error. |
+
 ## Which are set where
 
 - **Injected automatically** (don't set by hand): `DATABASE_URL`.
