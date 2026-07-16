@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { RecipeRow } from "@/lib/db/schema";
 import { countRecipes, listRecipeRows, type Visibility } from "@/lib/queries";
 import { DeleteDraftButton } from "./DeleteDraftButton";
+import { SendToPanelButton } from "./SendToPanelButton";
 import { publishRecipe, unpublishRecipe } from "./actions";
 
 const fmtDate = new Intl.DateTimeFormat("en-US", {
@@ -144,6 +145,7 @@ function Row({ row, kind }: { row: RecipeRow; kind: "draft" | "public" }) {
         >
           Edit
         </Link>
+        <SendToPanelButton slug={row.slug} />
         {kind === "public" ? (
           <>
             <a
